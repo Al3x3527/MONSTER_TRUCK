@@ -230,7 +230,7 @@ float (float dist, vector dir) truck_physics =
 	vec1 = self.flyhack;}//probably accomplishing nothing.
 	vec1.z = zcontrol(vec1.z, deflection, damping); //damped spring ratio
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
-	self.velocity.z = vec1.z - 10; //for next think
+	self.velocity.z = vec1.z - 270; //for next think
 
 	self = truck.wheel2;
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
@@ -247,7 +247,7 @@ float (float dist, vector dir) truck_physics =
 	}
 	vec2.z = zcontrol(vec2.z, deflection, damping);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
-	self.velocity.z = vec2.z - 10;
+	self.velocity.z = vec2.z - 270;
 	
 	//=================================================================
 	//change in rear wheels velocity
@@ -279,7 +279,7 @@ float (float dist, vector dir) truck_physics =
 	vec3.z = self.flyhack.z;
 	vec3.z = zcontrol(vec3.z, deflection, damping);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
-	self.velocity.z = vec3.z - 10;
+	self.velocity.z = vec3.z - 270;
 
 	self = truck.wheel4;
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
@@ -292,7 +292,7 @@ float (float dist, vector dir) truck_physics =
 	vec4.z = self.flyhack.z;
 	vec4.z = zcontrol(vec4.z, deflection, damping);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
-	self.velocity.z = vec4.z - 10;
+	self.velocity.z = vec4.z - 270;
 
 	//=================================================================
 	//vehicle forces, target vector
@@ -540,6 +540,9 @@ void(vector dir, vector offset) camera_orbit =
 
 void() truck_jump =
 {
+	if (self.count > time)
+		return;
+	self.count = time + 0.5;
 	self.owner.velocity.z = self.owner.flyhack.z = self.owner.velocity.z + 270;
 self.owner.wheel1.origin.z = self.owner.wheel1.origin.z + 270;
 self.owner.wheel2.origin.z = self.owner.wheel2.origin.z + 270;
@@ -549,6 +552,9 @@ self.owner.wheel4.origin.z = self.owner.wheel4.origin.z + 270;
 
 void() truck_boost =
 {
+	if (self.cnt > time)
+		return;
+	self.cnt = time + 0.5;
 	makevectors(self.owner.angles);
 	self.owner.velocity = self.owner.velocity + 1000 * v_forward;
 }
@@ -558,9 +564,6 @@ void() truck_ImpulseCommands =
 {
 	if (self.impulse == 1)
 		return; //in camera
-	if (self.count > time) 
-		return;
-	self.count = time + 0.5;
 	if (self.impulse == 2)
 		truck_jump();
 	if (self.impulse == 3)
