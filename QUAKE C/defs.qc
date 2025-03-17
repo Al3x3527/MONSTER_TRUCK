@@ -697,6 +697,7 @@ Vehicle_Truck
 */
 
 float FL_VEHICLE = 131072;
+float I_AM_TURRET = 262144; //dumptruck_ds
 .entity driver;
 .entity passenger;
 .entity turret;

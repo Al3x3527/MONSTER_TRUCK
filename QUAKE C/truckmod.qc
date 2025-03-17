@@ -1,7 +1,7 @@
 /*
 ============================================================
 
-Vehicle_Truck
+Monster_Truck
 
 ============================================================
 */
@@ -13,10 +13,157 @@ $frame right1 right2
 //left
 $frame left1 left2
 
-void() truck_switch =
+//try to walkmove if on ground, call traceline if flying
+void() cpywalk =
 {
-	self.nextchild = world;
+	local vector delta, deltay, deltax1, deltax2, deltaz;
+	local float dist, yaw;
+	local vector avec = self.owner.avelocity;
+	local vector fakeangles = self.owner.angles;
+	fakeangles.x = -fakeangles.x;
+	makevectors(fakeangles);
+	local vector view = self.view_ofs + self.owner.view_ofs;
+	view = view.x * v_forward + view.y * v_right + view.z * v_up + self.owner.origin;
+	//from origin
+	local vector del = self.owner.origin - self.origin;
+	//from angular
+	deltay = avec.y * 0.1 * (6.28 / 360) * ((del * v_forward) * v_right + (del * v_right) * v_forward);
+	deltax1 = -avec.x * 0.628 / 360 * (del * v_forward) * v_up;
+	deltax2 = -avec.x * 0.628 / 360 * (del * v_up) * v_forward;
+	deltaz = -avec.z * 0.628 / 360 * ((del * v_right) * v_up + (del * v_up) * v_right);
+	//from velocity
+	delta = deltay + deltax1 + deltax2 + deltaz + self.owner.velocity * 0.1;
+	//actual delta
+	delta = delta + view - self.origin;
+	dist = vlen(delta);
+
+	local vector dang = self.owner.angles + self.v_angle - self.angles;
+	if (dang.y > 180) dang.y = -360 + dang.y;
+	else if (dang.y < -180) dang.y = 360 + dang.y;
+	self.avelocity = dang * 10;
+
+	if (dist > 100) {
+		dprint("cpywalk setorigin\n");
+		setorigin(self, view);
+		self.velocity = self.owner.velocity;
+		return;
+	}
+	if ((self.movetype == MOVETYPE_STEP) && (self.flags & FL_ONGROUND)) {
+		yaw = vectoyaw(delta);
+		walkmove(yaw, dist);
+		} else if (self.solid == SOLID_BBOX) {
+		traceline(self.origin, delta, TRUE, self);
+		if (trace_fraction) {
+			delta = delta * trace_fraction;
+			} else delta = '0 0 0';
+	}
+	self.velocity = delta * 10;
+};
+
+//limit x,y
+vector(vector given, vector limit) xylimit =
+{
+	//dprint("xy limit\n");
+	//dprint(vtos(given));
+	//dprint(" given in\n");
+
+		if !(limit)
+			return limit;
+		if !(given)
+			return given;
+
+		if (limit.x > 0) {
+			if (limit.x < given.x)
+				given.x = limit.x;
+			else if (given.x < -limit.x)
+				given.x = -limit.x;
+				} else if (limit.x > given.x)
+			given.x = limit.x;
+		else if (limit.x > -given.x)
+			given.x = -limit.x;
+
+		if (limit.y > 0) {
+			if (limit.y < given.y)
+				given.y = limit.y;
+			else if (given.y < -limit.y)
+				given.y = -limit.y;
+		} else if (limit.y > given.y)
+				given.y = limit.y;
+		else if (limit.y > -given.y)
+			given.y = -limit.y;
+		//dprint(vtos(given));
+		//dprint(" return\n");
+			return given;
 }
+
+//vector control x,y
+vector(vector set, vector sys, float k) xycontrol =
+{
+	set.z = 0;
+	if !(set)
+		return set;
+	if !(sys)
+		return set;
+
+	if (set.x > 0) {
+		if (set.x < sys.x) {
+			if (set.x < (sys.x - set.x))
+				set.x = ((set.x - sys.x) * k) - set.x;
+			else set.x = ((sys.x - set.x) - sys.x) * k + (set.x - sys.x);
+			//dprint("vcontrol x\n");
+		}
+	} else {
+		if (set.x > sys.x) {
+			if (set.x > (sys.x - set.x))
+				set.x = ((set.x - sys.x) * k) - set.x;
+			else set.x = ((sys.x - set.x) - sys.x) * k + (set.x - sys.x);
+			//dprint("vcontrol -x\n");
+		}
+	}
+	if (set.y > 0) {
+		if (set.y < sys.y) {
+			if (set.y < (sys.y - set.y))
+				set.y = ((set.y - sys.y) * k) - set.y;
+			else set.y = ((sys.y - set.y) - sys.y) * k + (set.y - sys.y);
+			//dprint("vcontrol y\n");
+		}
+	} else {
+		if (set.y > sys.y) {
+			if (set.y > (sys.y - set.y))
+				set.y = ((set.y - sys.y) * k) - set.y;
+			else set.y = ((sys.y - set.y) - sys.y) * k + (set.y - sys.y);
+			//dprint("vcontrol -y\n");
+		}
+	}
+	return set;
+}
+
+//set: full extension, sys: actual deflection, c: damping ratio
+float(float sys, float set, float c) zcontrol =
+{
+
+	if !(sys)
+		return sys;
+
+	if (sys > 0) { //deflect up
+		if (sys > set)  //full deflection
+			sys = sys - (sys - set) * c;
+		else //partial deflection
+			sys = sys * c;
+	} else {
+		if (sys < -set) //full
+			sys = sys + (sys + set) * c;
+		else
+			sys = sys * c;
+	}
+	sys = sys * 0.1;
+	return sys;
+}
+
+//void() truck_switch =
+//{
+//	self.nextchild = world;
+//}
 
 void() truck_atk =
 {
@@ -75,7 +222,7 @@ float (float dist, vector dir) truck_physics =
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin; //start from the resting position
 	self.flyhack.z = self.origin.z - view.z;
 	setorigin (self, view);  //make reset after finding delta
-	subwalkmove(steer_yaw, fakedist); //movetype_step physics
+	walkmove(steer_yaw, fakedist); //movetype_step physics
 	vec1 = self.origin - view; //get to current position from start position
 	vec1.z = self.flyhack.z;
 	if (vlen(vec1) < (0.9 * fakedist)){ 
@@ -91,7 +238,7 @@ float (float dist, vector dir) truck_physics =
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin;
 	self.flyhack.z = self.origin.z - view.z;
 	setorigin(self, view);
-	subwalkmove(steer_yaw, fakedist);
+	walkmove(steer_yaw, fakedist);
 	vec2 = self.origin - view;
 	vec2.z = self.flyhack.z;
 	if (vlen(vec2) < (0.9 * fakedist)) {
@@ -127,7 +274,7 @@ float (float dist, vector dir) truck_physics =
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin;
 	self.flyhack.z = self.origin.z - view.z;
 	setorigin(self, view);
-	subwalkmove(chassis_yaw, fakedist); //move from view
+	walkmove(chassis_yaw, fakedist); //move from view
 	vec3 = self.origin - view; //movestep delta
 	vec3.z = self.flyhack.z;
 	vec3.z = zcontrol(vec3.z, deflection, damping);
@@ -140,7 +287,7 @@ float (float dist, vector dir) truck_physics =
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin;
 	self.flyhack.z = self.origin.z - view.z;
 	setorigin(self, view);
-	subwalkmove(chassis_yaw, fakedist);
+	walkmove(chassis_yaw, fakedist);
 	vec4 = self.origin - view;
 	vec4.z = self.flyhack.z;
 	vec4.z = zcontrol(vec4.z, deflection, damping);
@@ -300,7 +447,7 @@ float (float dist, vector dir) truck_physics =
 	//dprint("truck velocity\n");
 
 	self = truck;
-	subChangeYaw();
+	ChangeYaw();
 
 	//animate
 	local float direction;
@@ -324,7 +471,7 @@ void(entity truck) spawn_truck_driver =
 
 	player.driver = pilot;
 	pilot.owner = truck;
-	body_model("progs/player.mdl");
+	setmodel(self, "progs/player.mdl");
 	setsize(self, '-10 -10 0', '10 10 60');
 	self.view_ofs = '10 -15 40';
 	self.solid = SOLID_TRIGGER;
@@ -387,7 +534,7 @@ void(vector dir, vector offset) camera_orbit =
 		cvar_set("cl_rollangle", "2");
 		self.driver.health = 0;
 		remove(self.driver);
-		switch_weapon(self.weapon1);
+		//switch_weapon(self.weapon1);
 	}
 }
 
@@ -404,7 +551,7 @@ if !(self.driver.health) {
 	cvar_set("cl_bob", "0");
 	cvar_set("cl_rollangle", "0");
 	spawn_truck_driver(truck);
-	switch_weapon(truck);
+	//switch_weapon(truck);
 	}
 	local vector dir = aim(world, 1000);
 	local vector offset = '-200 0 60';
@@ -446,6 +593,27 @@ void() truck_drive = [ $forward1, truck_drive ]
 	}
 };
 
+/// from Copper -- dumptruck_ds (orginally found in triggers.qc)
+/*
+================================
+CheckValidTouch
+health and playerhood checks were duplicated everywhere
+added noclip check because Quake's default still-touch-everything noclip is awful
+================================
+*/
+float() CheckValidTouch =
+{
+	if (other.classname != "player")
+		return FALSE;
+	if (other.health <= 0)
+		return FALSE;
+	if (other.movetype == MOVETYPE_NOCLIP)
+		return FALSE;
+	//if (self.estate != STATE_ACTIVE)
+	//	return FALSE;
+	return TRUE;
+}
+
 void() truck_touch =
 {
 	if (!CheckValidTouch()) return;// from Copper -- dumptruck_ds
@@ -453,16 +621,16 @@ void() truck_touch =
 	if (!(other.flags & FL_CLIENT))
 		return;
 	if (self.driver == other) return;
-	if (self.count < time) {
-		sprint(other, "Press E to drive Truck\n");
-		}
-	self.count = time + 0.02;
-	if (other.impulse == 16) {
-		other.impulse = 0;
+	//if (self.count < time) {
+	//	sprint(other, "Press E to drive Truck\n");
+	//	}
+	//self.count = time + 0.02;
+	//if (other.impulse == 16) {
+	//	other.impulse = 0;
 		self.driver = other;
 		other.flags = other.flags + FL_VEHICLE;
 		self.nextthink = time + 0.1;
-		}
+	//	}
 }
 
 void() gunner_turret_atk1 = [0, gunner_turret_atk1]
@@ -471,7 +639,7 @@ void() gunner_turret_atk1 = [0, gunner_turret_atk1]
 	if !(self.enemy)
 		self.ideal_yaw = player.v_angle.y;
 	self.v_angle.y = self.ideal_yaw - self.owner.angles.y;
-	subChangeYaw();
+	ChangeYaw();
 };
 
 
@@ -484,15 +652,15 @@ void() spawn_truck_gunner =
 
 	truck.turret = gunner;
 	gunner.owner = truck;
-	body_model("progs/player.mdl");
+	setmodel(self, "progs/player.mdl");
 	setsize(self, '-10 -10 0', '10 10 60');
 	self.view_ofs = '-70 0 50';
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
 	
 	setorigin(self, truck.origin); //fix next truck think
-	self.th_turret = gunner_turret_atk1;
-	self.think = self.th_turret;
+	self.th_missile = gunner_turret_atk1;
+	self.think = self.th_missile;
 	self.nextthink = time + 0.1;
 	self = truck;
 }
@@ -505,7 +673,7 @@ void() spawn_truck_passenger =
 
 	truck.passenger = shotgun;
 	shotgun.owner = truck;
-	body_model("progs/player.mdl");
+	setmodel(self, "progs/player.mdl");
 	setsize(self, '-10 -10 0', '10 10 60');
 	self.view_ofs = '10 15 40';
 	self.solid = SOLID_TRIGGER;
@@ -553,7 +721,7 @@ void() spawn_vehicle_truck =
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
 	self.flags = FL_VEHICLE;
-	body_model("progs/e_mdls/e_truck.mdl");
+	setmodel(self, "progs/truck.mdl");
 	setsize(self, '-112 -40 18', '112 40 80');
 
 	//wheels -- not the visible model
@@ -572,31 +740,15 @@ void() spawn_vehicle_truck =
 		spawn_truck_passenger();
 		}
 
-	self.wp_switch = truck_switch;
-	self.wp_atk = truck_atk;
+	//self.wp_switch = truck_switch;
+	//self.wp_atk = truck_atk;
 };
 
 //Vanilla Spawning
 void() vehicle_truck =
 {
-	precache_model("progs/e_mdls/e_truck.mdl");
-	if (SUB_Inhibit())
-		return;
+	precache_model("progs/truck.mdl");
+	//if (SUB_Inhibit())
+	//	return;
 	spawn_vehicle_truck();
-};
-
-void() func_spawn_truck_use =
-{
-	local entity truck = spawn();
-	self = truck;
-	spawn_vehicle_truck();
-};
-
-void() func_spawn_truck =
-{
-	if (SUB_Inhibit())
-		return;
-
-	self.use = self.think = func_spawn_truck_use;
-	func_spawn_start();
 };
