@@ -519,7 +519,7 @@ void(vector dir, vector offset) camera_orbit =
 	self.velocity = (delta * 10 * 4 + self.velocity) / 5;
 
 	//dismount here because we have angles
-	if (self.impulse == 16) {
+	if (self.impulse == 1) {
 		self.impulse = 0;
 		setmodel(self, self.model);
 		self.movetype = MOVETYPE_WALK;
@@ -536,6 +536,37 @@ void(vector dir, vector offset) camera_orbit =
 		remove(self.driver);
 		//switch_weapon(self.weapon1);
 	}
+}
+
+void() truck_jump =
+{
+	self.owner.velocity.z = self.owner.flyhack.z = self.owner.velocity.z + 270;
+self.owner.wheel1.origin.z = self.owner.wheel1.origin.z + 270;
+self.owner.wheel2.origin.z = self.owner.wheel2.origin.z + 270;
+self.owner.wheel3.origin.z = self.owner.wheel3.origin.z + 270;
+self.owner.wheel4.origin.z = self.owner.wheel4.origin.z + 270;
+}
+
+void() truck_boost =
+{
+	makevectors(self.owner.angles);
+	self.owner.velocity = self.owner.velocity + 1000 * v_forward;
+}
+
+//other impulse commands
+void() truck_ImpulseCommands =
+{
+	if (self.impulse == 1)
+		return; //in camera
+	if (self.count > time) 
+		return;
+	self.count = time + 0.5;
+	if (self.impulse == 2)
+		truck_jump();
+	if (self.impulse == 3)
+		truck_boost();
+
+	self.impulse = 0;
 }
 
 vector () truck_pilot =
@@ -556,7 +587,7 @@ if !(self.driver.health) {
 	local vector dir = aim(world, 1000);
 	local vector offset = '-200 0 60';
 	camera_orbit(dir, offset);
-
+	truck_ImpulseCommands();
 	self = truck;
 	return (dir);
 }
@@ -621,16 +652,16 @@ void() truck_touch =
 	if (!(other.flags & FL_CLIENT))
 		return;
 	if (self.driver == other) return;
-	//if (self.count < time) {
-	//	sprint(other, "Press E to drive Truck\n");
-	//	}
-	//self.count = time + 0.02;
-	//if (other.impulse == 16) {
-	//	other.impulse = 0;
+	if (self.count < time) {
+		sprint(other, "Press 1 to drive Truck\n");
+		}
+	self.count = time + 0.02;
+	if (other.impulse == 1) {
+		other.impulse = 0;
 		self.driver = other;
 		other.flags = other.flags + FL_VEHICLE;
 		self.nextthink = time + 0.1;
-	//	}
+		}
 }
 
 void() gunner_turret_atk1 = [0, gunner_turret_atk1]
@@ -723,6 +754,7 @@ void() spawn_vehicle_truck =
 	self.flags = FL_VEHICLE;
 	setmodel(self, "progs/truck.mdl");
 	setsize(self, '-112 -40 18', '112 40 80');
+	self.classname = "monster_truck";
 
 	//wheels -- not the visible model
 	local float i = 0;

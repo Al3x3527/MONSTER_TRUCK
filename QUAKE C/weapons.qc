@@ -882,6 +882,13 @@ void() W_Attack =
 	if (!W_CheckNoAmmo ())
 		return;
 
+	if (self.flags & FL_VEHICLE) {
+		player_shot1();
+		self.attack_finished = time + 0.5;
+		return;
+	}
+		
+
 	makevectors	(self.v_angle);			// calculate forward angle for velocity
 	self.show_hostile = time + 1;	// wake monsters up
 
@@ -1062,6 +1069,9 @@ void() CycleWeaponCommand =
 {
 	local	float	it, am;
 	
+	if (self.flags & FL_VEHICLE)
+	return;
+
 	it = self.items;
 	self.impulse = 0;
 	
@@ -1136,6 +1146,9 @@ void() CycleWeaponReverseCommand =
 {
 	local	float	it, am;
 	
+	if (self.flags & FL_VEHICLE)
+	return;
+
 	it = self.items;
 	self.impulse = 0;
 
@@ -1229,6 +1242,15 @@ ImpulseCommands
 */
 void() ImpulseCommands =
 {
+	if (self.flags & FL_VEHICLE) {
+		if (self.impulse <= 3)
+			return;
+		else if  (self.impulse < 255) {
+			self.impulse = 0;
+			return;
+		}
+	}
+		
 	if (self.impulse >= 1 && self.impulse <= 8)
 		W_ChangeWeapon ();
 
@@ -1243,7 +1265,7 @@ void() ImpulseCommands =
 
 	if (self.impulse == 255)
 		QuadCheat ();
-		
+
 	self.impulse = 0;
 };
 
