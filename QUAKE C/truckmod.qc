@@ -1,3 +1,223 @@
+//====================================
+//DEFS
+//====================================
+
+float FL_VEHICLE = 131072;
+float I_AM_TURRET = 262144; //dumptruck_ds
+.entity driver;
+.entity passenger;
+.entity turret;
+
+.entity wheel1, wheel2, wheel3, wheel4;
+
+.vector flyhack;
+
+//====================================
+//WEAPONS
+//====================================
+
+/*
+============
+CycleWeaponCommand
+
+Go to the next weapon with ammo
+============
+*/
+void() CycleWeaponCommand =
+{
+	local	float	it, am;
+
+	if (self.flags & FL_VEHICLE)
+	return;
+
+	it = self.items;
+	self.impulse = 0;
+
+	while (1)
+	{
+		am = 0;
+
+		if (self.weapon == IT_LIGHTNING)
+		{
+			self.weapon = IT_AXE;
+		} else if (self.weapon == IT_AXE)
+		{
+			self.weapon = IT_SHOTGUN;
+			if (self.ammo_shells < 1)
+				am = 1;
+		} else if (self.weapon == IT_SHOTGUN)
+		{
+			self.weapon = IT_SUPER_SHOTGUN;
+			if (self.ammo_shells < 2)
+				am = 1;
+		} else if (self.weapon == IT_SUPER_SHOTGUN)
+		{
+			self.weapon = IT_NAILGUN;
+			if (self.ammo_nails < 1)
+				am = 1;
+		} else if (self.weapon == IT_NAILGUN)
+		{
+			self.weapon = IT_SUPER_NAILGUN;
+			if (self.ammo_nails < 2)
+				am = 1;
+		} else if (self.weapon == IT_SUPER_NAILGUN)
+		{
+			self.weapon = IT_GRENADE_LAUNCHER;
+			if (self.ammo_rockets < 1)
+				am = 1;
+		} else if (self.weapon == IT_GRENADE_LAUNCHER)
+		{
+			self.weapon = IT_ROCKET_LAUNCHER;
+			if (self.ammo_rockets < 1)
+				am = 1;
+		} else if (self.weapon == IT_ROCKET_LAUNCHER)
+		{
+			self.weapon = IT_LIGHTNING;
+			if (self.ammo_cells < 1)
+				am = 1;
+		}
+
+		if ((it & self.weapon) && am == 0)
+		{
+			W_SetCurrentAmmo();
+			return;
+		}
+	}
+
+};
+
+/*
+============
+CycleWeaponReverseCommand
+
+Go to the prev weapon with ammo
+============
+*/
+void() CycleWeaponReverseCommand =
+{
+	local	float	it, am;
+
+	if (self.flags & FL_VEHICLE)
+	return;
+
+	it = self.items;
+	self.impulse = 0;
+
+	while (1)
+	{
+		am = 0;
+
+		if (self.weapon == IT_LIGHTNING)
+		{
+			self.weapon = IT_ROCKET_LAUNCHER;
+			if (self.ammo_rockets < 1)
+				am = 1;
+		} else if (self.weapon == IT_ROCKET_LAUNCHER)
+		{
+			self.weapon = IT_GRENADE_LAUNCHER;
+			if (self.ammo_rockets < 1)
+				am = 1;
+		} else if (self.weapon == IT_GRENADE_LAUNCHER)
+		{
+			self.weapon = IT_SUPER_NAILGUN;
+			if (self.ammo_nails < 2)
+				am = 1;
+		} else if (self.weapon == IT_SUPER_NAILGUN)
+		{
+			self.weapon = IT_NAILGUN;
+			if (self.ammo_nails < 1)
+				am = 1;
+		} else if (self.weapon == IT_NAILGUN)
+		{
+			self.weapon = IT_SUPER_SHOTGUN;
+			if (self.ammo_shells < 2)
+				am = 1;
+		} else if (self.weapon == IT_SUPER_SHOTGUN)
+		{
+			self.weapon = IT_SHOTGUN;
+			if (self.ammo_shells < 1)
+				am = 1;
+		} else if (self.weapon == IT_SHOTGUN)
+		{
+			self.weapon = IT_AXE;
+		} else if (self.weapon == IT_AXE)
+		{
+			self.weapon = IT_LIGHTNING;
+			if (self.ammo_cells < 1)
+				am = 1;
+		}
+
+		if ((it & self.weapon) && am == 0)
+		{
+			W_SetCurrentAmmo();
+			return;
+		}
+	}
+
+};
+
+/*
+============
+ImpulseCommands
+
+============
+*/
+void() ImpulseCommands =
+{
+	if (self.flags & FL_VEHICLE) {
+		if (self.impulse <= 3)
+			return;
+		else if (self.impulse < 255) {
+			self.impulse = 0;
+			return;
+		}
+	}
+
+	if (self.impulse >= 1 && self.impulse <= 8)
+		W_ChangeWeapon();
+
+	if (self.impulse == 9)
+		CheatCommand();
+	if (self.impulse == 10)
+		CycleWeaponCommand();
+	if (self.impulse == 11)
+		ServerflagsCommand();
+	if (self.impulse == 12)
+		CycleWeaponReverseCommand();
+
+	if (self.impulse == 255)
+		QuadCheat();
+
+	self.impulse = 0;
+};
+
+/*
+============
+SUBS
+
+============
+*/
+/// from Copper -- dumptruck_ds (orginally found in triggers.qc)
+/*
+================================
+CheckValidTouch
+health and playerhood checks were duplicated everywhere
+added noclip check because Quake's default still-touch-everything noclip is awful
+================================
+*/
+float() CheckValidTouch =
+{
+	if (other.classname != "player")
+		return FALSE;
+	if (other.health <= 0)
+		return FALSE;
+	if (other.movetype == MOVETYPE_NOCLIP)
+		return FALSE;
+	//if (self.estate != STATE_ACTIVE)
+	//	return FALSE;
+	return TRUE;
+}
+
 /*
 ============================================================
 
@@ -160,19 +380,12 @@ float(float sys, float set, float c) zcontrol =
 	return sys;
 }
 
-//void() truck_switch =
-//{
-//	self.nextchild = world;
-//}
-
 void() truck_atk =
 {
 	local vector	dir;
 	local entity gunner = self.owner.turret;
 	sound(self, CHAN_WEAPON, "weapons/spike2.wav", 1, ATTN_NORM);
 	self.attack_finished = time + 0.2;
-	//self.currentammo = self.ammo_nails = self.ammo_nails - 2;
-	//self.currentammo = self.currentammo - 1;
 	dir = aim(self, 1000);
 	launch_spike(gunner.origin + '0 0 30', dir);
 	newmis.touch = superspike_touch;
@@ -627,26 +840,6 @@ void() truck_drive = [ $forward1, truck_drive ]
 	}
 };
 
-/// from Copper -- dumptruck_ds (orginally found in triggers.qc)
-/*
-================================
-CheckValidTouch
-health and playerhood checks were duplicated everywhere
-added noclip check because Quake's default still-touch-everything noclip is awful
-================================
-*/
-float() CheckValidTouch =
-{
-	if (other.classname != "player")
-		return FALSE;
-	if (other.health <= 0)
-		return FALSE;
-	if (other.movetype == MOVETYPE_NOCLIP)
-		return FALSE;
-	//if (self.estate != STATE_ACTIVE)
-	//	return FALSE;
-	return TRUE;
-}
 
 void() truck_touch =
 {
@@ -774,9 +967,6 @@ void() spawn_vehicle_truck =
 		spawn_truck_gunner();
 		spawn_truck_passenger();
 		}
-
-	//self.wp_switch = truck_switch;
-	//self.wp_atk = truck_atk;
 };
 
 //Vanilla Spawning
@@ -787,3 +977,5 @@ void() vehicle_truck =
 	//	return;
 	spawn_vehicle_truck();
 };
+
+

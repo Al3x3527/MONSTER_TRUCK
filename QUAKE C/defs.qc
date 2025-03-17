@@ -689,19 +689,3 @@ void(entity targ, entity inflictor, entity attacker, float damage) T_Damage;
 float (entity e, float healamount, float ignore) T_Heal; // health function
 
 float(entity targ, entity inflictor) CanDamage;
-
-/*
-============================================================
-Vehicle_Truck
-============================================================
-*/
-
-float FL_VEHICLE = 131072;
-float I_AM_TURRET = 262144; //dumptruck_ds
-.entity driver;
-.entity passenger;
-.entity turret;
-
-.entity wheel1, wheel2, wheel3, wheel4;
-
-.vector flyhack;
