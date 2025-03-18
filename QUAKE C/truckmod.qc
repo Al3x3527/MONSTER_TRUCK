@@ -12,211 +12,139 @@ float I_AM_TURRET = 262144; //dumptruck_ds
 
 .vector flyhack;
 
-//====================================
-//WEAPONS
-//====================================
-
-/*
-============
-CycleWeaponCommand
-
-Go to the next weapon with ammo
-============
-*/
-void() CycleWeaponCommand =
-{
-	local	float	it, am;
-
-	if (self.flags & FL_VEHICLE)
-	return;
-
-	it = self.items;
-	self.impulse = 0;
-
-	while (1)
-	{
-		am = 0;
-
-		if (self.weapon == IT_LIGHTNING)
-		{
-			self.weapon = IT_AXE;
-		} else if (self.weapon == IT_AXE)
-		{
-			self.weapon = IT_SHOTGUN;
-			if (self.ammo_shells < 1)
-				am = 1;
-		} else if (self.weapon == IT_SHOTGUN)
-		{
-			self.weapon = IT_SUPER_SHOTGUN;
-			if (self.ammo_shells < 2)
-				am = 1;
-		} else if (self.weapon == IT_SUPER_SHOTGUN)
-		{
-			self.weapon = IT_NAILGUN;
-			if (self.ammo_nails < 1)
-				am = 1;
-		} else if (self.weapon == IT_NAILGUN)
-		{
-			self.weapon = IT_SUPER_NAILGUN;
-			if (self.ammo_nails < 2)
-				am = 1;
-		} else if (self.weapon == IT_SUPER_NAILGUN)
-		{
-			self.weapon = IT_GRENADE_LAUNCHER;
-			if (self.ammo_rockets < 1)
-				am = 1;
-		} else if (self.weapon == IT_GRENADE_LAUNCHER)
-		{
-			self.weapon = IT_ROCKET_LAUNCHER;
-			if (self.ammo_rockets < 1)
-				am = 1;
-		} else if (self.weapon == IT_ROCKET_LAUNCHER)
-		{
-			self.weapon = IT_LIGHTNING;
-			if (self.ammo_cells < 1)
-				am = 1;
-		}
-
-		if ((it & self.weapon) && am == 0)
-		{
-			W_SetCurrentAmmo();
-			return;
-		}
-	}
-
-};
-
-/*
-============
-CycleWeaponReverseCommand
-
-Go to the prev weapon with ammo
-============
-*/
-void() CycleWeaponReverseCommand =
-{
-	local	float	it, am;
-
-	if (self.flags & FL_VEHICLE)
-	return;
-
-	it = self.items;
-	self.impulse = 0;
-
-	while (1)
-	{
-		am = 0;
-
-		if (self.weapon == IT_LIGHTNING)
-		{
-			self.weapon = IT_ROCKET_LAUNCHER;
-			if (self.ammo_rockets < 1)
-				am = 1;
-		} else if (self.weapon == IT_ROCKET_LAUNCHER)
-		{
-			self.weapon = IT_GRENADE_LAUNCHER;
-			if (self.ammo_rockets < 1)
-				am = 1;
-		} else if (self.weapon == IT_GRENADE_LAUNCHER)
-		{
-			self.weapon = IT_SUPER_NAILGUN;
-			if (self.ammo_nails < 2)
-				am = 1;
-		} else if (self.weapon == IT_SUPER_NAILGUN)
-		{
-			self.weapon = IT_NAILGUN;
-			if (self.ammo_nails < 1)
-				am = 1;
-		} else if (self.weapon == IT_NAILGUN)
-		{
-			self.weapon = IT_SUPER_SHOTGUN;
-			if (self.ammo_shells < 2)
-				am = 1;
-		} else if (self.weapon == IT_SUPER_SHOTGUN)
-		{
-			self.weapon = IT_SHOTGUN;
-			if (self.ammo_shells < 1)
-				am = 1;
-		} else if (self.weapon == IT_SHOTGUN)
-		{
-			self.weapon = IT_AXE;
-		} else if (self.weapon == IT_AXE)
-		{
-			self.weapon = IT_LIGHTNING;
-			if (self.ammo_cells < 1)
-				am = 1;
-		}
-
-		if ((it & self.weapon) && am == 0)
-		{
-			W_SetCurrentAmmo();
-			return;
-		}
-	}
-
-};
-
-/*
-============
-ImpulseCommands
-
-============
-*/
+// --------------------------------
+// ImpulseCommands --Copper
+// --------------------------------
 void() ImpulseCommands =
 {
+	if (!self.impulse) return;
+
 	if (self.flags & FL_VEHICLE) {
 		if (self.impulse <= 3)
 			return;
-		else if (self.impulse < 255) {
-			self.impulse = 0;
-			return;
-		}
 	}
 
-	if (self.impulse >= 1 && self.impulse <= 8)
+	if (self.impulse < 9)
+	{
 		W_ChangeWeapon();
-
-	if (self.impulse == 9)
-		CheatCommand();
-	if (self.impulse == 10)
+	} else if (self.impulse >= 20 && self.impulse <= 39)
+	{
+		dev_impulse(self.impulse);
+	} else switch (self.impulse)
+	{
+	case 10:
 		CycleWeaponCommand();
-	if (self.impulse == 11)
-		ServerflagsCommand();
-	if (self.impulse == 12)
+		break;
+	case 12:
 		CycleWeaponReverseCommand();
+		break;
+	case 11:
+		ServerflagsCommand();
+		break;
+	case 13:
+		W_SelectBestShotgun();
+		break;
+	case 14:
+		W_SelectBestNailgun();
+		break;
+	case 15:
+		W_SelectBestWeapon();
+		break;
+	case 16:
+		W_SelectLastWeapon();
+		break;
 
-	if (self.impulse == 255)
-		QuadCheat();
+	case 40:
+		dev_impulse_list();
+		break;
+	case 64:
+		dev_i_cant_see();
+		break;
+	case 72:
+		dev_test();
+		break;
+	case 80:
+		dev_add_meatball();
+		break;
+	case 81:
+		dev_remove_meatball();
+		break;
+	case 100:
+		dev_invoke();
+		break;
+	case 101:
+		dev_reveal();
+		break;
+	case 102:
+		dev_trigger();
+		break;
+	case 103:
+		dev_hitpoints();
+		break;
+	case 104:
+		dev_serverflags();
+		break;
+	case 105:
+		dev_warp();
+		break;
+	case 106:
+		dev_whatami();
+		break;
+	case 108:
+		dev_tracetest();
+		break;
+	case 127:
+	case 129:
+		coredump();
+		break;
 
-	self.impulse = 0;
-};
+	case 140:
+		sound(self, CHAN_VOICE, "player/tornoff2.wav", 1, ATTN_STATIC);
+		centerprint(self, version_s);
+		break;
 
-/*
-============
-SUBS
+	case 9:
+		Cheat_Items();
+		break;
+	case 99:
+		Cheat_Keys();
+		break;
+		// how about, execute order six?
+		// nah. makes it sound like there aren't that many orders
+		case 66:
+		case 205:
+			if (!deathmatch && !coop)
+				Cheat_Genocide();
+			break;
+		case 200:
+			dev_remaining_monsters();
+			break;
+		case 210:
+			toggle_autosave();
+			break;
+		case 215:
+			Cheat_Undying();
+			break;
+		case 225:
+			Cheat_Suit();
+			break;
+		case 235:
+			Cheat_Pent();
+			break;
+		case 245:
+			Cheat_Ring();
+			break;
+		case 255:
+			Cheat_Quad();
+			break;
 
-============
-*/
-/// from Copper -- dumptruck_ds (orginally found in triggers.qc)
-/*
-================================
-CheckValidTouch
-health and playerhood checks were duplicated everywhere
-added noclip check because Quake's default still-touch-everything noclip is awful
-================================
-*/
-float() CheckValidTouch =
-{
-	if (other.classname != "player")
-		return FALSE;
-	if (other.health <= 0)
-		return FALSE;
-	if (other.movetype == MOVETYPE_NOCLIP)
-		return FALSE;
-	//if (self.estate != STATE_ACTIVE)
-	//	return FALSE;
-	return TRUE;
+		default:
+			return;
+		}
+
+		self.impulse = 0;
 }
+
 
 /*
 ============================================================
@@ -380,7 +308,7 @@ float(float sys, float set, float c) zcontrol =
 	return sys;
 }
 
-void() truck_atk =
+/*void() truck_atk =
 {
 	local vector	dir;
 	local entity gunner = self.owner.turret;
@@ -392,7 +320,7 @@ void() truck_atk =
 	setmodel(newmis, "progs/laser.mdl");
 	setsize(newmis, VEC_ORIGIN, VEC_ORIGIN);
 	self.punchangle_x = -2;
-}
+}*/
 
 //calculate vehicle_truck velocity and avelocity from wheels
 float (float dist, vector dir) truck_physics =
@@ -799,6 +727,7 @@ if !(self.driver.health) {
 	cvar_set("cl_rollangle", "0");
 	spawn_truck_driver(truck);
 	//switch_weapon(truck);
+	sprint(self, "Press 1 to Dismount\nPress 2 to Jump\nPress 3 to Boost\n");
 	}
 	local vector dir = aim(world, 1000);
 	local vector offset = '-200 0 60';
