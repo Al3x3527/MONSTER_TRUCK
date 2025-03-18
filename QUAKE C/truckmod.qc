@@ -371,7 +371,8 @@ float (float dist, vector dir) truck_physics =
 	vec1 = self.flyhack;}//probably accomplishing nothing.
 	vec1.z = zcontrol(vec1.z, deflection, damping); //damped spring ratio
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
-	self.velocity.z = vec1.z - 270; //for next think
+	self.velocity.z = vec1.z - 65; //for next think
+	//gravity over 65 causes constant "dddddddd" sounds
 
 	self = truck.wheel2;
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
@@ -388,7 +389,7 @@ float (float dist, vector dir) truck_physics =
 	}
 	vec2.z = zcontrol(vec2.z, deflection, damping);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
-	self.velocity.z = vec2.z - 270;
+	self.velocity.z = vec2.z - 65;
 	
 	//=================================================================
 	//change in rear wheels velocity
@@ -420,7 +421,7 @@ float (float dist, vector dir) truck_physics =
 	vec3.z = self.flyhack.z;
 	vec3.z = zcontrol(vec3.z, deflection, damping);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
-	self.velocity.z = vec3.z - 270;
+	self.velocity.z = vec3.z - 65;
 
 	self = truck.wheel4;
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
@@ -433,7 +434,7 @@ float (float dist, vector dir) truck_physics =
 	vec4.z = self.flyhack.z;
 	vec4.z = zcontrol(vec4.z, deflection, damping);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
-	self.velocity.z = vec4.z - 270;
+	self.velocity.z = vec4.z - 65;
 
 	//=================================================================
 	//vehicle forces, target vector

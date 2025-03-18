@@ -1512,10 +1512,11 @@ void() PlayerPreThink =
 	WaterMove();
 	if (self.waterlevel == WL_WAIST)
 		CheckWaterJump ();
-
-	if (self.button2)
-	{
-		PlayerJump ();
+	if !(self.flags & FL_VEHICLE) {
+		if (self.button2)
+		{
+			PlayerJump ();
+		}
 	}
 	else
 	{
