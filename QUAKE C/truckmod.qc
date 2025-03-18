@@ -668,7 +668,7 @@ void(vector dir, vector offset) camera_orbit =
 		view = v_forward * 10 - v_right * 50 + v_up * 40;
 		setorigin(self, truck.origin + view);
 		self.velocity = truck.velocity;
-		self.flags = self.flags - FL_VEHICLE;
+		self.flags = self.flags - FL_VEHICLE - FL_NOTARGET;
 		sprint(self, "Truck dismounted\n");
 		truck.driver = world;
 		self.owner = world;
@@ -721,15 +721,16 @@ vector () truck_pilot =
 
 if !(self.driver.health) {
 	self.modelindex = 0;
-	self.weaponmodel = string_null;
+	//self.weaponmodel = string_null;
 	self.movetype = MOVETYPE_FLY;
 	self.owner = truck;
 	cvar_set("cl_bob", "0");
 	cvar_set("cl_rollangle", "0");
 	spawn_truck_driver(truck);
-	//switch_weapon(truck);
-	sprint(self, "Press 1 to Dismount\nPress 2 to Jump\nPress 3 to Boost\n");
+	
+	sprint(self, "\nPress 1 to Dismount\nPress 2 to Jump\nPress 3 to Boost\n");
 	}
+	self.weaponmodel = string_null;
 	local vector dir = aim(world, 1000);
 	local vector offset = '-200 0 60';
 	camera_orbit(dir, offset);
@@ -773,7 +774,7 @@ void() truck_drive = [ $forward1, truck_drive ]
 
 void() truck_touch =
 {
-	if (!CheckValidTouch()) return;// from Copper -- dumptruck_ds
+	if (!CheckValidTouch()) return;
 
 	if (!(other.flags & FL_CLIENT))
 		return;
@@ -785,19 +786,143 @@ void() truck_touch =
 	if (other.impulse == 1) {
 		other.impulse = 0;
 		self.driver = other;
-		other.flags = other.flags + FL_VEHICLE;
+		other.flags = other.flags + FL_VEHICLE + FL_NOTARGET;
 		self.nextthink = time + 0.1;
 		}
 }
 
-void() gunner_turret_atk1 = [0, gunner_turret_atk1]
+void()	gunner_shot1 = [$shotatt1, gunner_shot2] {self.weaponframe = 1;
+self.effects = self.effects | EF_MUZZLEFLASH; }
+void()	gunner_shot2 = [$shotatt2, gunner_shot3] {self.weaponframe = 2; }
+void()	gunner_shot3 = [$shotatt3, gunner_shot4] {self.weaponframe = 3; }
+void()	gunner_shot4 = [$shotatt4, gunner_shot5] {self.weaponframe = 4; }
+void()	gunner_shot5 = [$shotatt5, gunner_shot6] {self.weaponframe = 5; }
+void()	gunner_shot6 = [$shotatt6, gunner_turret_atk1] {self.weaponframe = 6; }
+
+void() gunner_nail = //because ai don't click buttons
 {
-	local entity player = self.owner.driver;
+	self.effects |= EF_MUZZLEFLASH;
+
+	if (self.frame != $nailatt1) self.frame = $nailatt1;
+	else self.frame += 1;
+	self.think = gunner_turret_atk3;
+	self.nextthink = time + 0.125;	// TODO: oh fuck it, it works, you're never touching this again
+
+	self.weaponframe = self.cnt + 1;
+}
+
+void() gunner_light1 = [$light1, gunner_light2]
+{
+	self.effects = self.effects | EF_MUZZLEFLASH;
+	self.weaponframe = self.weaponframe + 1;
+	if (self.weaponframe == 5)
+		self.weaponframe = 1;
+
+	W_FireLightning();
+	self.attack_finished = time + 0.2;
+}
+void() gunner_light2 = [$light2, gunner_light1]
+{
+	self.effects = self.effects | EF_MUZZLEFLASH;
+	self.weaponframe = self.weaponframe + 1;
+	if (self.weaponframe == 5) {
+		self.weaponframe = 1;
+		self.think = gunner_check_atk;
+		}
+
+	W_FireLightning();
+	self.attack_finished = time + 0.2;
+}
+
+void() gunner_rocket1 = [$rockatt1, gunner_rocket2] {self.weaponframe = 1;
+self.effects = self.effects | EF_MUZZLEFLASH; }
+void() gunner_rocket2 = [$rockatt2, gunner_rocket3] {self.weaponframe = 2; }
+void() gunner_rocket3 = [$rockatt3, gunner_rocket4] {self.weaponframe = 3; }
+void() gunner_rocket4 = [$rockatt4, gunner_rocket5] {self.weaponframe = 4; }
+void() gunner_rocket5 = [$rockatt5, gunner_rocket6] {self.weaponframe = 5; }
+void() gunner_rocket6 = [$rockatt6, gunner_turret_atk1] {self.weaponframe = 6; }
+
+void() gunner_find_enemy =
+{
+	local entity m;
+	if (self.enemy) 
+		return;
+
+	m = nextent(self.owner.driver);
+	while (self.enemy == world) {
+	if ((m.flags & FL_MONSTER)
+	&& (infront(m)))
+	self.enemy = m;
+
+	m = nextent(m);
+	if (m == world)
+		return;
+	}
+}
+
+void() gunner_choose_yaw =
+{
+	local entity pilot = self.owner.driver;
 	if !(self.enemy)
-		self.ideal_yaw = player.v_angle.y;
+		gunner_find_enemy();
+
+	enemy_vis = visible(self.enemy);
+	enemy_range = range(self.enemy);
+
+	if (alive(self.enemy) && enemy_vis && (enemy_range < 4)) {
+		self.ideal_yaw = enemy_yaw();
+	} else {
+	self.ideal_yaw = pilot.v_angle.y;
+	self.think = gunner_turret_atk1;
+	}
+
 	self.v_angle.y = self.ideal_yaw - self.owner.angles.y;
 	ChangeYaw();
-};
+}
+
+void() gunner_check_atk =
+{
+	local entity pilot = self.owner.driver;
+	dprint("gunner check atk\n");
+	gunner_choose_yaw();
+	if (!alive(self.enemy))
+		return;
+	if (enemy_range > 2)
+		return;
+
+	if (pilot.weapon == IT_SHOTGUN)
+	{
+		player_shot1();
+		W_FireShotgun();
+	} else if (pilot.weapon == IT_SUPER_SHOTGUN)
+	{
+		player_shot1();
+		W_FireSuperShotgun();
+	} else if (pilot.weapon == IT_NAILGUN || pilot.weapon == IT_SUPER_NAILGUN)
+	{
+		gunner_nail();
+		W_FireSpikes();
+	} else if (pilot.weapon == IT_GRENADE_LAUNCHER)
+	{
+		player_rocket1();
+		W_FireGrenade();
+	} else if (pilot.weapon == IT_ROCKET_LAUNCHER)
+	{
+		player_rocket1();
+		W_FireRocket();
+	}
+
+	else if (pilot.weapon == IT_LIGHTNING)
+	{
+		gunner_light1();
+		self.attack_finished = time + 0.1;
+		sound(self, CHAN_AUTO, "weapons/lstart.wav", 1, ATTN_NORM);
+	}
+}
+
+void() gunner_turret_atk1 = [0, gunner_turret_atk2] {gunner_choose_yaw();}
+void() gunner_turret_atk2 = [0, gunner_turret_atk3] {gunner_choose_yaw();}
+void() gunner_turret_atk3 = [self.frame, gunner_turret_atk1] {gunner_check_atk();}
 
 
 //demo gunner
@@ -819,6 +944,7 @@ void() spawn_truck_gunner =
 	self.th_missile = gunner_turret_atk1;
 	self.think = self.th_missile;
 	self.nextthink = time + 0.1;
+
 	self = truck;
 }
 
@@ -899,7 +1025,6 @@ void() spawn_vehicle_truck =
 		}
 };
 
-//Vanilla Spawning
 void() vehicle_truck =
 {
 	precache_model("progs/truck.mdl");

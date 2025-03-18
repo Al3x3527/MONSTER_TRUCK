@@ -78,6 +78,12 @@ void()	player_stand1 =[	$axstnd1,	player_stand1	]
 
 void()	player_run =[	$rockrun1,	player_run	]
 {
+	if (self.classname != "player") {
+		self.think = self.th_missile;
+		self.frame = $shotatt6;
+		return;
+		}
+
 	W_SetIdleWeaponFrame();
 	if (!self.velocity_x && !self.velocity_y)
 	{
