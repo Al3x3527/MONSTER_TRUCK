@@ -7,6 +7,8 @@ float I_AM_TURRET = 262144; //dumptruck_ds
 .entity driver;
 .entity passenger;
 .entity turret;
+.entity collider2;
+.entity collider1;
 
 .entity wheel1, wheel2, wheel3, wheel4;
 
@@ -614,7 +616,7 @@ void(entity truck) spawn_truck_driver =
 	player.driver = pilot;
 	pilot.owner = truck;
 	setmodel(self, "progs/player.mdl");
-	setsize(self, '-10 -10 0', '10 10 60');
+	setsize(self, '-10 -10 0', '10 10 30');
 	if (truck.classname == "vehicle_truck")
 		self.view_ofs = '10 -15 40';
 	else self.view_ofs = '5 -7 20';
@@ -723,6 +725,8 @@ void() truck_fix = //add trigger truck fix to elevators?
 	truck.wheel2.origin.z = truck.origin.z + truck.wheel2.view_ofs.z - 1;
 	truck.wheel3.origin.z = truck.origin.z + truck.wheel3.view_ofs.z - 1;
 	truck.wheel4.origin.z = truck.origin.z + truck.wheel4.view_ofs.z - 1;
+	truck.collider1.origin.z = truck.origin.z;
+	truck.collider2.origin.z = truck.origin.z;
 }
 
 //other impulse commands
@@ -789,8 +793,15 @@ void() truck_drive = [ $forward1, truck_drive ]
 	local entity truck = self;
 	self = self.turret;
 	cpywalk();
-	self = truck.passenger;
-	cpywalk();
+	if (truck.passenger) {
+		self = truck.passenger;
+		cpywalk(); }
+	if (truck.collider1) {
+		self = truck.collider1;
+		cpywalk();}
+	if (truck.collider2) {
+		self = truck.collider2;
+		cpywalk();}
 	if (other) {
 		self = other.driver;
 		cpywalk();
@@ -811,6 +822,8 @@ void() truck_touch =
 	self.count = time + 0.02;
 	if (other.impulse == 1) {
 		other.impulse = 0;
+		if ((self.classname == "truck_bed") || (self.classname == "truck_front"))
+			self = self.owner;
 		self.driver = other;
 		other.flags = other.flags + FL_VEHICLE + FL_NOTARGET;
 		//self.nextthink = time + 0.1;
@@ -1053,7 +1066,7 @@ void() spawn_truck_gunner2 =
 	truck.turret = gunner;
 	gunner.owner = truck;
 	setmodel(self, "progs/player.mdl");
-	setsize(self, '-10 -10 0', '10 10 60');
+	setsize(self, '-10 -10 0', '10 10 30');
 	self.view_ofs = '-35 0 25';
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
@@ -1094,7 +1107,7 @@ void() spawn_truck_passenger2 =
 	truck.passenger = shotgun;
 	shotgun.owner = truck;
 	setmodel(self, "progs/player.mdl");
-	setsize(self, '-10 -10 0', '10 10 60');
+	setsize(self, '-10 -10 0', '10 10 30');
 	self.view_ofs = '5 7 20';
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
@@ -1149,16 +1162,16 @@ void(float i) spawn_truck_wheel2 =
 	setsize(self, '-7 -7 -7', '7 7 7');
 	if !(i) {
 	truck.wheel1 = self;
-	self.view_ofs = '32 16 7';
+	self.view_ofs = '32 12 7';
 	} else if (i == 1) {
 	truck.wheel2 = self;
-	self.view_ofs = '32 -16 7';
+	self.view_ofs = '32 -12 7';
 	} else if (i == 2) {
 	truck.wheel3 = self;
-	self.view_ofs = '-32 16 7';
+	self.view_ofs = '-32 12 7';
 	} else if (i == 3) {
 	truck.wheel4 = self;
-	self.view_ofs = '-32 -16 7';
+	self.view_ofs = '-32 -12 7';
 	} else dprint("too many wheels spawned!\n");
 	setorigin(self, truck.origin + self.view_ofs);
 
@@ -1211,6 +1224,43 @@ void() vehicle_truck =
 	spawn_vehicle_truck();
 };
 
+void() spawn_truck_bed =
+{
+	local entity truck = self;
+	local entity bed = spawn();
+	self = bed;
+	self.solid = SOLID_TRIGGER;
+	self.movetype = MOVETYPE_FLY;
+	self.flags = FL_VEHICLE;
+	setsize(self, '-20 -20 18', '20 20 52');
+	self.view_ofs = '-27 0 0';
+	setorigin(self, truck.origin + self.view_ofs);
+	self.touch = truck.touch;
+	truck.collider2 = self;
+	self.owner = truck;
+	self.classname = "truck_bed";
+	self = truck;
+}
+
+void() spawn_truck_front =
+{
+	local entity truck = self;
+	local entity front = spawn();
+	self = front;
+	self.solid = SOLID_TRIGGER;
+	self.movetype = MOVETYPE_FLY;
+	self.flags = FL_VEHICLE;
+	setsize(self, '-20 -20 18', '20 20 52');
+	self.view_ofs = '20 0 0';
+	setorigin(self, truck.origin + self.view_ofs);
+	self.touch = truck.touch;
+	truck.collider1 = self;
+	self.owner = truck;
+	self.classname = "truck_front";
+	self = truck;
+}
+
+
 void() spawn_monster_truck =
 {
 	//body with wheels model
@@ -1218,7 +1268,7 @@ void() spawn_monster_truck =
 	self.movetype = MOVETYPE_FLY;
 	self.flags = FL_VEHICLE;
 	setmodel(self, "progs/mini_truck.mdl");
-	setsize(self, '-32 -32 18', '32 32 64');
+	setsize(self, '-8 -8 18', '8 8 26');
 	self.classname = "monster_truck";
 	self.angles.y = self.angles.y;
 
@@ -1232,7 +1282,8 @@ void() spawn_monster_truck =
 	self.touch = truck_touch;
 	self.think = truck_drive;
 	self.nextthink = time + 0.1;
-
+	spawn_truck_bed();
+	spawn_truck_front();
 	//gunner
 	//if (self.spawnflags & I_AM_TURRET) {
 		spawn_truck_gunner2();
