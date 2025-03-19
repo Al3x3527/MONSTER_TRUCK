@@ -1517,10 +1517,10 @@ void() PlayerPreThink =
 		{
 			PlayerJump ();
 		}
-	}
-	else
-	{
-		self.flags = self.flags | FL_JUMPRELEASED;
+		else
+		{
+			self.flags = self.flags | FL_JUMPRELEASED;
+		}
 	}
 	
 // teleporters can force a non-moving pause time	
