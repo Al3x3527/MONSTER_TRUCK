@@ -725,7 +725,13 @@ float() FindTarget =
 			return FALSE;
 		}
 	}
-	
+
+	if (self.enemy.flags & FL_VEHICLE) {
+		self.enemy.owner.turret.enemy = self;
+		self.enemy = self.enemy.driver; //target the fake player
+		if !(alive(self.enemy))
+			return FALSE;
+	}
 	FoundTarget();
 
 	return TRUE;

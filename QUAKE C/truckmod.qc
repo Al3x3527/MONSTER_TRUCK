@@ -373,8 +373,6 @@ float (float dist, vector dir) truck_physics =
 	//vec1 = self.flyhack;}//probably accomplishing nothing.
 	vec1.z = zcontrol(vec1.z, deflection, damping); //damped spring ratio
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
-	self.velocity.z = vec1.z - 65; //for next think
-	//gravity over 65 causes constant "dddddddd" sounds
 
 	self = truck.wheel2;
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
@@ -391,7 +389,7 @@ float (float dist, vector dir) truck_physics =
 	//}
 	vec2.z = zcontrol(vec2.z, deflection, damping);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
-	self.velocity.z = vec2.z - 65;
+
 	
 	//=================================================================
 	//change in rear wheels velocity
@@ -423,7 +421,6 @@ float (float dist, vector dir) truck_physics =
 	vec3.z = self.flyhack.z;
 	vec3.z = zcontrol(vec3.z, deflection, damping);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
-	self.velocity.z = vec3.z - 65;
 
 	self = truck.wheel4;
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
@@ -436,7 +433,6 @@ float (float dist, vector dir) truck_physics =
 	vec4.z = self.flyhack.z;
 	vec4.z = zcontrol(vec4.z, deflection, damping);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
-	self.velocity.z = vec4.z - 65;
 
 	//=================================================================
 	//vehicle forces, target vector
@@ -459,28 +455,28 @@ float (float dist, vector dir) truck_physics =
 	grip3 = v_forward * fgrip + v_right * rgrip;
 	grip4 = v_forward * fgrip + v_right * rgrip;
 
-	if (vec1.z < -1)
+	if (vec1.z < -3)
 		grip1 = '0 0 0';
 	else {
-		grip1 = (1 - vec1.z) * grip1; //mu*m*svec1.z^2
+		grip1 = (3 - vec1.z) * grip1; //mu*m*svec1.z^2
 		vec1.z = vec1.z - tvec.z;
 		}
-	if (vec2.z < -1)
+	if (vec2.z < -3)
 		grip2 = '0 0 0';
 	else {
-		grip2 = (1 - vec2.z) * grip2;
+		grip2 = (3 - vec2.z) * grip2;
 		vec2.z = vec2.z - tvec.z;
 		}
-	if (vec3.z < -1)
+	if (vec3.z < -3)
 		grip3 = '0 0 0';
 	else {
-		grip3 = (1 - vec3.z) * grip3;
+		grip3 = (3 - vec3.z) * grip3;
 		vec3.z = vec3.z - tvec.z;
 		}
-	if (vec4.z < -1)
+	if (vec4.z < -3)
 		grip4 = '0 0 0';
 	else {
-		grip4 = (1 - vec4.z) * grip4;
+		grip4 = (3 - vec4.z) * grip4;
 		vec4.z = vec4.z - tvec.z;
 		}
 	
@@ -622,7 +618,7 @@ void(entity truck) spawn_truck_driver =
 	else self.view_ofs = '5 -7 20';
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
-	self.health = 1;
+	self.health = 100;
 
 	setorigin(self, truck.origin + self.view_ofs); //fix next truck think
 	self = player;
@@ -689,11 +685,11 @@ void() truck_jump =
 	if (self.count > time)
 		return;
 	self.count = time + 0.5;
-	self.owner.velocity.z = self.owner.flyhack.z = self.owner.velocity.z + 270;
-self.owner.wheel1.origin.z = self.owner.wheel1.origin.z + 270;
-self.owner.wheel2.origin.z = self.owner.wheel2.origin.z + 270;
-self.owner.wheel3.origin.z = self.owner.wheel3.origin.z + 270;
-self.owner.wheel4.origin.z = self.owner.wheel4.origin.z + 270;
+	self.owner.velocity.z = self.owner.flyhack.z = self.owner.velocity.z + 135;
+self.owner.wheel1.origin.z = self.owner.wheel1.origin.z + 135;
+self.owner.wheel2.origin.z = self.owner.wheel2.origin.z + 135;
+self.owner.wheel3.origin.z = self.owner.wheel3.origin.z + 135;
+self.owner.wheel4.origin.z = self.owner.wheel4.origin.z + 135;
 }
 
 void() truck_boost =
@@ -702,13 +698,13 @@ void() truck_boost =
 		return;
 	self.cnt = time + 0.5;
 	makevectors(self.owner.angles);
-	self.owner.velocity = self.owner.velocity + 1000 * v_forward;
+	self.owner.velocity = self.owner.velocity + 500 * v_forward;
 }
 
 void() truck_fix = //add trigger truck fix to elevators?
 {
 	local entity truck = self.owner;
-	truck.velocity = truck.flyhack = '0 0 -270';
+	truck.velocity = truck.flyhack = '0 0 0';
 	truck.wheel1.velocity = truck.wheel1.flyhack = '0 0 -270';
 	truck.wheel2.velocity = truck.wheel2.flyhack = '0 0 -270';
 	truck.wheel3.velocity = truck.wheel3.flyhack = '0 0 -270';
@@ -719,14 +715,27 @@ void() truck_fix = //add trigger truck fix to elevators?
 	truck.angles.x = 0;
 	//roll
 	truck.angles.z = 0;
+	truck.angles.y = self.angles.y;
 	//origin.z
-	truck.origin.z = truck.origin.z + 19;
-	truck.wheel1.origin.z = truck.origin.z + truck.wheel1.view_ofs.z - 1;
-	truck.wheel2.origin.z = truck.origin.z + truck.wheel2.view_ofs.z - 1;
-	truck.wheel3.origin.z = truck.origin.z + truck.wheel3.view_ofs.z - 1;
-	truck.wheel4.origin.z = truck.origin.z + truck.wheel4.view_ofs.z - 1;
+	truck.origin.z = truck.origin.z + 18;
+	truck.wheel1.origin.z = truck.origin.z + truck.wheel1.view_ofs.z - 27;
+	truck.wheel2.origin.z = truck.origin.z + truck.wheel2.view_ofs.z - 27;
+	truck.wheel3.origin.z = truck.origin.z + truck.wheel3.view_ofs.z - 27;
+	truck.wheel4.origin.z = truck.origin.z + truck.wheel4.view_ofs.z - 27;
 	truck.collider1.origin.z = truck.origin.z;
 	truck.collider2.origin.z = truck.origin.z;
+	self = truck;
+	remove(truck.turret);
+	spawn_truck_gunner2();
+	remove(truck.passenger);
+	spawn_truck_passenger2();
+	remove(truck.collider1);
+	remove(truck.collider2);
+	spawn_truck_bed();
+	spawn_truck_front();
+	remove(truck.driver.driver);
+	self = truck.driver;
+	spawn_truck_driver(truck);
 }
 
 //other impulse commands
@@ -813,8 +822,15 @@ void() truck_touch =
 {
 	if (!CheckValidTouch()) return;
 
+	if (other.flags & FL_MONSTER)
+		T_Damage(other, self, self, 100);
+
 	if (!(other.flags & FL_CLIENT))
 		return;
+
+	if ((self.classname == "truck_bed") || (self.classname == "truck_front"))
+		self = self.owner;
+
 	if (self.driver == other) return;
 	if (self.count < time) {
 		sprint(other, "Press 1 to drive Truck\n");
@@ -822,11 +838,9 @@ void() truck_touch =
 	self.count = time + 0.02;
 	if (other.impulse == 1) {
 		other.impulse = 0;
-		if ((self.classname == "truck_bed") || (self.classname == "truck_front"))
-			self = self.owner;
 		self.driver = other;
-		other.flags = other.flags + FL_VEHICLE + FL_NOTARGET;
-		//self.nextthink = time + 0.1;
+		other.flags = other.flags + FL_VEHICLE;
+		self.flags = self.flags + FL_CLIENT;
 		}
 }
 
@@ -946,14 +960,14 @@ void() gunner_rocket6 = [$rockatt6, gunner_turret_atk1] {self.weaponframe = 6; }
 void() gunner_find_enemy =
 {
 	local entity m;
-	if (self.enemy) 
+	if (alive(self.enemy)) 
 		return;
 
-	m = nextent(self.owner.driver);
+	m = nextent(world);
 	while (self.enemy == world) {
 	if ((m.flags & FL_MONSTER)
-	&& (infront(m))
-	&& (range(m) < 4))
+	&& (visible(m))
+	&& (range(m) < 3))
 	self.enemy = m;
 
 	m = nextent(m);
@@ -965,8 +979,6 @@ void() gunner_find_enemy =
 void() gunner_choose_yaw =
 {
 	local entity pilot = self.owner.driver;
-	if !(self.enemy)
-		gunner_find_enemy();
 
 	enemy_vis = visible(self.enemy);
 	enemy_range = range(self.enemy);
@@ -976,6 +988,7 @@ void() gunner_choose_yaw =
 	} else {
 	self.ideal_yaw = pilot.v_angle.y;
 	self.enemy = world;
+	gunner_find_enemy();
 	self.think = gunner_turret_atk1;
 	}
 
@@ -1053,7 +1066,6 @@ void() spawn_truck_gunner =
 	self.th_missile = gunner_turret_atk1;
 	self.think = self.th_missile;
 	self.nextthink = time + 0.1;
-
 	self = truck;
 }
 
@@ -1075,7 +1087,6 @@ void() spawn_truck_gunner2 =
 	self.th_missile = gunner_turret_atk1;
 	self.think = self.th_missile;
 	self.nextthink = time + 0.1;
-	
 	self = truck;
 }
 
@@ -1094,7 +1105,6 @@ void() spawn_truck_passenger =
 	self.movetype = MOVETYPE_FLY;
 
 	setorigin(self, truck.origin + self.view_ofs);
-
 	self = truck;
 }
 
@@ -1113,7 +1123,6 @@ void() spawn_truck_passenger2 =
 	self.movetype = MOVETYPE_FLY;
 
 	setorigin(self, truck.origin + self.view_ofs);
-
 	self = truck;
 }
 
@@ -1174,7 +1183,6 @@ void(float i) spawn_truck_wheel2 =
 	self.view_ofs = '-32 -12 7';
 	} else dprint("too many wheels spawned!\n");
 	setorigin(self, truck.origin + self.view_ofs);
-
 	self = truck;
 }
 
@@ -1187,7 +1195,6 @@ void() spawn_vehicle_truck =
 	setmodel(self, "progs/truck.mdl");
 	setsize(self, '-112 -40 18', '112 40 80');
 	self.classname = "vehicle_truck";
-
 	//wheels -- not the visible model
 	local float i = 0;
 	while (i < 4)
@@ -1232,7 +1239,7 @@ void() spawn_truck_bed =
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
 	self.flags = FL_VEHICLE;
-	setsize(self, '-20 -20 18', '20 20 52');
+	setsize(self, '-20 -20 20', '20 20 52');
 	self.view_ofs = '-27 0 0';
 	setorigin(self, truck.origin + self.view_ofs);
 	self.touch = truck.touch;
@@ -1250,8 +1257,8 @@ void() spawn_truck_front =
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
 	self.flags = FL_VEHICLE;
-	setsize(self, '-20 -20 18', '20 20 52');
-	self.view_ofs = '20 0 0';
+	setsize(self, '-20 -20 20', '20 20 52');
+	self.view_ofs = '16 0 0';
 	setorigin(self, truck.origin + self.view_ofs);
 	self.touch = truck.touch;
 	truck.collider1 = self;
@@ -1268,7 +1275,7 @@ void() spawn_monster_truck =
 	self.movetype = MOVETYPE_FLY;
 	self.flags = FL_VEHICLE;
 	setmodel(self, "progs/mini_truck.mdl");
-	setsize(self, '-8 -8 18', '8 8 26');
+	setsize(self, '-8 -8 20', '8 8 36');
 	self.classname = "monster_truck";
 	self.angles.y = self.angles.y;
 

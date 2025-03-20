@@ -1573,6 +1573,7 @@ void() PlayerPostThink =
 	PlayerHealthTick();
 
 	// check to see if player landed and play landing sound	
+	//if !(self.flags & FL_VEHICLE) {
 	if ((self.jump_flag < -300) && (self.flags & FL_ONGROUND) && (self.health > 0))
 	{
 		if (self.jump_flag < -650 && !(self.customflags & CFL_PLUNGE) && !self.waterlevel)
@@ -1585,6 +1586,7 @@ void() PlayerPostThink =
 
 		self.jump_flag = 0;
 	}
+	//}
 
 	CheckPowerups ();
 	
