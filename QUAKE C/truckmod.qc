@@ -210,8 +210,8 @@ void() cpywalk =
 	self.velocity = delta * 10;
 };
 
-//limit x,y
-vector(vector given, vector limit) xylimit =
+//limit x,y,(z)
+vector(vector given, vector limit) vlimit =
 {
 	//dprint("xy limit\n");
 	//dprint(vtos(given));
@@ -241,13 +241,23 @@ vector(vector given, vector limit) xylimit =
 				given.y = limit.y;
 		else if (limit.y > -given.y)
 			given.y = -limit.y;
+
+		if (limit.z > 0) {
+			if (limit.z < given.z)
+				given.z = limit.z;
+			else if (given.z < -limit.z)
+				given.z = -limit.z;
+		} else if (limit.z > given.z)
+			given.z = limit.z;
+		else if (limit.z > -given.z)
+			given.z = -limit.z;
 		//dprint(vtos(given));
 		//dprint(" return\n");
 			return given;
 }
 
-//vector control x,y
-vector(vector set, vector sys, float k) xycontrol =
+//vector control x,y, (z)
+vector(vector set, vector sys, float k) vcontrol =
 {
 	set.z = 0;
 	if !(set)
@@ -282,6 +292,21 @@ vector(vector set, vector sys, float k) xycontrol =
 			if (set.y > (sys.y - set.y))
 				set.y = ((set.y - sys.y) * k) - set.y;
 			else set.y = ((sys.y - set.y) - sys.y) * k + (set.y - sys.y);
+			//dprint("vcontrol -y\n");
+		}
+	}
+	if (set.z > 0) {
+		if (set.z < sys.z) {
+			if (set.z < (sys.z - set.z))
+				set.z = ((set.z - sys.z) * k) - set.z;
+			else set.z = ((sys.z - set.z) - sys.z) * k + (set.z - sys.z);
+			//dprint("vcontrol y\n");
+		}
+	} else {
+		if (set.z > sys.z) {
+			if (set.z > (sys.z - set.z))
+				set.z = ((set.z - sys.z) * k) - set.z;
+			else set.z = ((sys.z - set.z) - sys.z) * k + (set.z - sys.z);
 			//dprint("vcontrol -y\n");
 		}
 	}
@@ -368,6 +393,12 @@ vector(vector vec) notup =
 {
 	local vector vup = vec * v_up * v_up;
 	vec = vec - vup;
+	return vec;
+}
+
+vector (vector vec) up =
+{
+	vec = vec * v_up * v_up;
 	return vec;
 }
 
@@ -522,67 +553,74 @@ float (float dist, vector dir) truck_physics =
 	grip3 = v_forward * fgrip + v_right * rgrip;
 	grip4 = v_forward * fgrip + v_right * rgrip;
 
-	if (vec1.z < -3)
+	local float vup = vec1 * v_up;
+	local vector tup = up(-tvec);
+	if (vup < -3)
 		grip1 = '0 0 0';
 	else {
-		grip1 = (3 - vec1.z) * grip1; //mu*m*svec1.z^2
-		vec1.z = vec1.z - tvec.z;
+		grip1 = (3 - vup) * grip1; //mu*m*svec1.z^2
+		//vec1.z = vec1.z - tvec.z;
+		vec1 += tup;
 		}
-	if (vec2.z < -3)
+	vup = vec2 * v_up;
+	if (vup < -3)
 		grip2 = '0 0 0';
 	else {
-		grip2 = (3 - vec2.z) * grip2;
-		vec2.z = vec2.z - tvec.z;
+		grip2 = (3 - vup) * grip2;
+		vec2 += tup;
 		}
-	if (vec3.z < -3)
+	vup = vec3 * v_up;
+	if (vup < -3)
 		grip3 = '0 0 0';
 	else {
-		grip3 = (3 - vec3.z) * grip3;
-		vec3.z = vec3.z - tvec.z;
+		grip3 = (3 - vup) * grip3;
+		vec3 += tup;
 		}
-	if (vec4.z < -3)
+	vup = vec4 * v_up;
+	if (vup < -3)
 		grip4 = '0 0 0';
 	else {
-		grip4 = (3 - vec4.z) * grip4;
-		vec4.z = vec4.z - tvec.z;
+		grip4 = (3 - vup) * grip4;
+		vec4 += tup;
 		}
 	
-	local vector work1 = vec1;	work1.z = 0;
-	work1 = xylimit(work1, grip1) * throttle;
-	local vector control1 = xycontrol(work1, tvec, sgrip);
-	work1.z = vec1.z;
+	tvec = notup(tvec);
+	local vector work1 = notup(vec1);
+	work1 = vlimit(work1, grip1) * throttle;
+	local vector control1 = vcontrol(work1, tvec, sgrip);
+	work1 += up(vec1);
+	//work1.z = vec1.z;
 	truck.wheel1.flyhack = work1;
 	control1 = control1 + work1;
-	work1.z = work1.z * throttle;
+	//work1 = notup(work1) + up(work1) * throttle;
+	//work1.z = work1.z * throttle;
 
-	local vector work2 = vec2;	work2.z = 0;
-	work2 = xylimit(work2, grip2) * throttle;
-	local vector control2 = xycontrol(work2, tvec, sgrip);
-	work2.z = vec2.z;
+	local vector work2 = notup(vec2);
+	work2 = vlimit(work2, grip2) * throttle;
+	local vector control2 = vcontrol(work2, tvec, sgrip);
+	work2 += up(vec2);
 	truck.wheel2.flyhack = work2;
 	control2 = control2 + work2;
-	work2.z = work2.z * throttle;
+	//work2.z = work2.z * throttle;
 
-	local vector work3 = vec3;	work3.z = 0;
-	work3 = xylimit(work3, grip3) * throttle;
-	local vector control3 = xycontrol(work3, tvec, sgrip);
-	work3.z = vec3.z;
+	local vector work3 = notup(vec3);
+	work3 = vlimit(work3, grip3) * throttle;
+	local vector control3 = vcontrol(work3, tvec, sgrip);
+	work3 += up(vec3);
 	truck.wheel3.flyhack = work3;
 	control3 = control3 + work3;
-	work3.z = work3.z * throttle;
 
-	local vector work4 = vec4;	work4.z = 0;
-	work4 = xylimit(work4, grip4) * throttle;
-	local vector control4 = xycontrol(work4, tvec, sgrip);
-	work4.z = vec4.z;
+	local vector work4 = notup(vec4);
+	work4 = vlimit(work4, grip4) * throttle;
+	local vector control4 = vcontrol(work4, tvec, sgrip);
+	work4 += up(vec4);
 	truck.wheel4.flyhack = work4;
 	control4 = control4 + work4;
-	work4.z = work4.z * throttle;
 
 	//actual travel
 	svec = (svec + ((control1 + control2 + control3 + control4) * 10));
 
-	local vector final_vec = v_forward + (work1 + work2 - work3 - work4) * throttle;
+	local vector final_vec = v_forward + (work1 + work2 - work3 - work4);// * throttle;
 	local vector final_angs = vectoangles(final_vec);
 
 	dang = final_angs.x - truck.angles.x;
@@ -596,7 +634,7 @@ float (float dist, vector dir) truck_physics =
 	avec.y = ((dang) * 1);
 	local float final_yaw = vectoyaw(final_vec);
 
-	final_vec = v_right + (-work1 - work3 + work2 + work4) * throttle;
+	final_vec = v_right + (-work1 - work3 + work2 + work4);// * throttle;
 	final_angs = vectoangles(final_vec);
 
 	dang = (final_angs.x - truck.angles.z);
