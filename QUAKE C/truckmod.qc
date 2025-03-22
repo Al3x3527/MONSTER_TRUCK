@@ -310,6 +310,67 @@ float(float sys, float set, float c) zcontrol =
 	return sys;
 }
 
+//vector control damping
+//call makevectors() first
+vector(vector delta) vdamping =
+{
+	local float deflection = 3;
+	local float c = 0.6; //damping
+	local vector sys = delta * v_up * v_up;
+	local vector set = deflection * v_up;
+	if !(set)
+		return sys * 0.1 * c;
+	if !(sys)
+		return sys;
+if (sys.x){
+	if (sys.x > 0) {
+		if (sys.x > set.x)
+			sys.x = sys.x - (sys.x - set.x) * c;
+		else 
+			sys.x = sys.x * c;
+	} else {
+		if (sys.x < -set.x) //full
+			sys.x = sys.x + (sys.x + set.x) * c;
+		else
+			sys.x = sys.x * c;
+	}
+}
+if (sys.y) {
+	if (sys.y > 0) {
+		if (sys.y > set.y)
+			sys.y = sys.y - (sys.y - set.y) * c;
+		else
+			sys.y = sys.y * c;
+	} else {
+		if (sys.y < -set.y)
+			sys.y = sys.y + (sys.y + set.y) * c;
+		else
+			sys.y = sys.y * c;
+	}
+}
+	if (sys.z > 0) {
+		if (sys.z > set.z)
+			sys.z = sys.z - (sys.z - set.z) * c;
+		else
+			sys.z = sys.z * c;
+	} else {
+		if (sys.z < -set.z)
+			sys.z = sys.z + (sys.z + set.z) * c;
+		else
+			sys.z = sys.z * c;
+	}
+
+	sys = sys * 0.1;
+	return sys;
+};
+
+vector(vector vec) notup =
+{
+	local vector vup = vec * v_up * v_up;
+	vec = vec - vup;
+	return vec;
+}
+
 /*void() truck_atk =
 {
 	local vector	dir;
@@ -350,8 +411,6 @@ float (float dist, vector dir) truck_physics =
 	makevectors(fakeangles); //starting angles
 
 	local float steer_yaw = vectoyaw(dir);
-	local float deflection = 3;
-	local float damping = 0.6;
 
 	//=================================================================
 	//front wheels work against momentum
@@ -363,31 +422,35 @@ float (float dist, vector dir) truck_physics =
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
 	local vector view = self.view_ofs;
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin; //start from the resting position
-	self.flyhack.z = self.origin.z - view.z;
-	setorigin (self, view);  //make reset after finding delta
+	self.flyhack = self.origin - view; //was .z
+
+	local vector fakeview = (self.origin - view) * v_up * v_up;
+	setorigin (self, view + fakeview);  //make reset after finding delta
 	walkmove(steer_yaw, fakedist); //movetype_step physics
-	vec1 = self.origin - view; //get to current position from start position
-	vec1.z = self.flyhack.z;
+	vec1 = notup(self.origin - view); //get to current position from start position
+	vec1 = vec1 + vdamping(self.flyhack);
 	//if (vlen(vec1) < (0.9 * fakedist)){ 
 	//dprint("short step\n");
 	//vec1 = self.flyhack;}//probably accomplishing nothing.
-	vec1.z = zcontrol(vec1.z, deflection, damping); //damped spring ratio
+	//vec1.z = zcontrol(vec1.z, deflection, damping); //damped spring ratio
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
 
 	self = truck.wheel2;
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
 	view = self.view_ofs;
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin;
-	self.flyhack.z = self.origin.z - view.z;
-	setorigin(self, view);
+	self.flyhack = self.origin - view;
+	fakeview = (self.origin - view) * v_up * v_up;
+	setorigin(self, view + fakeview);
 	walkmove(steer_yaw, fakedist);
-	vec2 = self.origin - view;
-	vec2.z = self.flyhack.z;
+	vec2 = notup(self.origin - view);
+	vec2 += vdamping(self.flyhack);
+	//vec2.z = fakeview.z;
 	//if (vlen(vec2) < (0.9 * fakedist)) {
 		//dprint("short step\n");
 	//	vec2 = self.flyhack;
 	//}
-	vec2.z = zcontrol(vec2.z, deflection, damping);
+	//vec2.z = zcontrol(vec2.z, deflection, damping);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
 
 	
@@ -414,24 +477,28 @@ float (float dist, vector dir) truck_physics =
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
 	view = self.view_ofs;
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin;
-	self.flyhack.z = self.origin.z - view.z;
-	setorigin(self, view);
+	self.flyhack = self.origin - view;
+	fakeview = (self.origin - view) * v_up * v_up;
+	setorigin(self, view + fakeview);
 	walkmove(chassis_yaw, fakedist); //move from view
-	vec3 = self.origin - view; //movestep delta
-	vec3.z = self.flyhack.z;
-	vec3.z = zcontrol(vec3.z, deflection, damping);
+	vec3 = notup(self.origin - view); //movestep delta
+	vec3 += vdamping(self.flyhack);
+	//vec3.z = fakeview.z;
+	//vec3.z = zcontrol(vec3.z, deflection, damping);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
 
 	self = truck.wheel4;
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
 	view = self.view_ofs;
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin;
-	self.flyhack.z = self.origin.z - view.z;
-	setorigin(self, view);
+	self.flyhack = self.origin - view;
+	fakeview = (self.origin - view) * v_up * v_up;
+	setorigin(self, view + fakeview);
 	walkmove(chassis_yaw, fakedist);
-	vec4 = self.origin - view;
-	vec4.z = self.flyhack.z;
-	vec4.z = zcontrol(vec4.z, deflection, damping);
+	vec4 = notup(self.origin - view);
+	vec4 += vdamping(self.flyhack);
+	//vec4.z = fakeview.z;
+	//vec4.z = zcontrol(vec4.z, deflection, damping);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
 
 	//=================================================================
@@ -685,11 +752,17 @@ void() truck_jump =
 	if (self.count > time)
 		return;
 	self.count = time + 0.5;
+	makevectors(self.owner.angles);
 	self.owner.velocity.z = self.owner.flyhack.z = self.owner.velocity.z + 135;
+	self.owner.velocity = self.owner.flyhack = self.owner.velocity + 80 * v_forward;
 self.owner.wheel1.origin.z = self.owner.wheel1.origin.z + 135;
+self.owner.wheel1.velocity = self.owner.velocity;
 self.owner.wheel2.origin.z = self.owner.wheel2.origin.z + 135;
+self.owner.wheel2.velocity = self.owner.velocity;
 self.owner.wheel3.origin.z = self.owner.wheel3.origin.z + 135;
+self.owner.wheel3.velocity = self.owner.velocity;
 self.owner.wheel4.origin.z = self.owner.wheel4.origin.z + 135;
+self.owner.wheel4.velocity = self.owner.velocity;
 }
 
 void() truck_boost =
@@ -718,10 +791,10 @@ void() truck_fix = //add trigger truck fix to elevators?
 	truck.angles.y = self.angles.y;
 	//origin.z
 	truck.origin.z = truck.origin.z + 18;
-	truck.wheel1.origin.z = truck.origin.z + truck.wheel1.view_ofs.z - 27;
-	truck.wheel2.origin.z = truck.origin.z + truck.wheel2.view_ofs.z - 27;
-	truck.wheel3.origin.z = truck.origin.z + truck.wheel3.view_ofs.z - 27;
-	truck.wheel4.origin.z = truck.origin.z + truck.wheel4.view_ofs.z - 27;
+	truck.wheel1.origin.z = truck.origin.z + truck.wheel1.view_ofs.z - 3;
+	truck.wheel2.origin.z = truck.origin.z + truck.wheel2.view_ofs.z - 3;
+	truck.wheel3.origin.z = truck.origin.z + truck.wheel3.view_ofs.z - 3;
+	truck.wheel4.origin.z = truck.origin.z + truck.wheel4.view_ofs.z - 3;
 	truck.collider1.origin.z = truck.origin.z;
 	truck.collider2.origin.z = truck.origin.z;
 	self = truck;
