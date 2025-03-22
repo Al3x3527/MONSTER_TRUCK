@@ -459,6 +459,7 @@ float (float dist, vector dir) truck_physics =
 	setorigin (self, view + fakeview);  //make reset after finding delta
 	walkmove(steer_yaw, fakedist); //movetype_step physics
 	vec1 = notup(self.origin - view); //get to current position from start position
+	local vector work1 = vec1;
 	vec1 = vec1 + vdamping(self.flyhack);
 	//if (vlen(vec1) < (0.9 * fakedist)){ 
 	//dprint("short step\n");
@@ -475,6 +476,7 @@ float (float dist, vector dir) truck_physics =
 	setorigin(self, view + fakeview);
 	walkmove(steer_yaw, fakedist);
 	vec2 = notup(self.origin - view);
+	local vector work2 = vec2;
 	vec2 += vdamping(self.flyhack);
 	//vec2.z = fakeview.z;
 	//if (vlen(vec2) < (0.9 * fakedist)) {
@@ -513,6 +515,7 @@ float (float dist, vector dir) truck_physics =
 	setorigin(self, view + fakeview);
 	walkmove(chassis_yaw, fakedist); //move from view
 	vec3 = notup(self.origin - view); //movestep delta
+	local vector work3 = vec3;
 	vec3 += vdamping(self.flyhack);
 	//vec3.z = fakeview.z;
 	//vec3.z = zcontrol(vec3.z, deflection, damping);
@@ -527,6 +530,7 @@ float (float dist, vector dir) truck_physics =
 	setorigin(self, view + fakeview);
 	walkmove(chassis_yaw, fakedist);
 	vec4 = notup(self.origin - view);
+	local vector work4 = vec4;
 	vec4 += vdamping(self.flyhack);
 	//vec4.z = fakeview.z;
 	//vec4.z = zcontrol(vec4.z, deflection, damping);
@@ -548,13 +552,14 @@ float (float dist, vector dir) truck_physics =
 	
 	chassis_vec = normalize(chassis_vec);
 	local vector grip1, grip2, grip3, grip4;
-	grip1 = normalize(vec1) * fgrip + v_right * rgrip;
-	grip2 = normalize(vec2) * fgrip + v_right * rgrip;
-	grip3 = v_forward * fgrip + v_right * rgrip;
-	grip4 = v_forward * fgrip + v_right * rgrip;
+	grip1 = normalize(work1) * fgrip + v_right * rgrip;
+	grip2 = normalize(work2) * fgrip + v_right * rgrip;
+	grip3 = normalize(work3) * fgrip + v_right * rgrip;
+	grip4 = normalize(work4) * fgrip + v_right * rgrip;
 
 	local float vup = vec1 * v_up;
 	local vector tup = up(-tvec);
+
 	if (vup < -3)
 		grip1 = '0 0 0';
 	else {
@@ -585,7 +590,7 @@ float (float dist, vector dir) truck_physics =
 		}
 	
 	tvec = notup(tvec);
-	local vector work1 = notup(vec1);
+	
 	work1 = vlimit(work1, grip1) * throttle;
 	local vector control1 = vcontrol(work1, tvec, sgrip);
 	work1 += up(vec1);
@@ -595,7 +600,6 @@ float (float dist, vector dir) truck_physics =
 	//work1 = notup(work1) + up(work1) * throttle;
 	//work1.z = work1.z * throttle;
 
-	local vector work2 = notup(vec2);
 	work2 = vlimit(work2, grip2) * throttle;
 	local vector control2 = vcontrol(work2, tvec, sgrip);
 	work2 += up(vec2);
@@ -603,14 +607,12 @@ float (float dist, vector dir) truck_physics =
 	control2 = control2 + work2;
 	//work2.z = work2.z * throttle;
 
-	local vector work3 = notup(vec3);
 	work3 = vlimit(work3, grip3) * throttle;
 	local vector control3 = vcontrol(work3, tvec, sgrip);
 	work3 += up(vec3);
 	truck.wheel3.flyhack = work3;
 	control3 = control3 + work3;
 
-	local vector work4 = notup(vec4);
 	work4 = vlimit(work4, grip4) * throttle;
 	local vector control4 = vcontrol(work4, tvec, sgrip);
 	work4 += up(vec4);
