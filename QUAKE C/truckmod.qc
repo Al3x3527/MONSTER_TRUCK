@@ -2,7 +2,7 @@
 //DEFS
 //====================================
 
-float FL_VEHICLE = 131072;
+float FL_VEHICLE = 16384;
 float I_AM_TURRET = 262144; //dumptruck_ds
 .entity driver;
 .entity passenger;
@@ -618,7 +618,7 @@ void(entity truck) spawn_truck_driver =
 	else self.view_ofs = '5 -7 20';
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
-	self.health = 100;
+	self.health = 100; //triggers doors
 
 	setorigin(self, truck.origin + self.view_ofs); //fix next truck think
 	self = player;
@@ -820,10 +820,11 @@ void() truck_drive = [ $forward1, truck_drive ]
 
 void() truck_touch =
 {
-	if (!CheckValidTouch()) return;
-
+	if (other.owner == self) return;
 	if (other.flags & FL_MONSTER)
 		T_Damage(other, self, self, 100);
+	
+	if (!CheckValidTouch()) return;
 
 	if (!(other.flags & FL_CLIENT))
 		return;
@@ -1273,7 +1274,7 @@ void() spawn_monster_truck =
 	//body with wheels model
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
-	self.flags = FL_VEHICLE;
+	self.flags = FL_VEHICLE + FL_MONSTER;
 	setmodel(self, "progs/mini_truck.mdl");
 	setsize(self, '-8 -8 20', '8 8 36');
 	self.classname = "monster_truck";
