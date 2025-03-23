@@ -313,28 +313,6 @@ vector(vector set, vector sys, float k) vcontrol =
 	return set;
 }
 
-//set: full extension, sys: actual deflection, c: damping ratio
-float(float sys, float set, float c) zcontrol =
-{
-
-	if !(sys)
-		return sys;
-
-	if (sys > 0) { //deflect up
-		if (sys > set)  //full deflection
-			sys = sys - (sys - set) * c;
-		else //partial deflection
-			sys = sys * c;
-	} else {
-		if (sys < -set) //full
-			sys = sys + (sys + set) * c;
-		else
-			sys = sys * c;
-	}
-	sys = sys * 0.1;
-	return sys;
-}
-
 //vector control damping
 //call makevectors() first
 vector(vector delta) vdamping =
@@ -402,20 +380,6 @@ vector (vector vec) up =
 	return vec;
 }
 
-/*void() truck_atk =
-{
-	local vector	dir;
-	local entity gunner = self.owner.turret;
-	sound(self, CHAN_WEAPON, "weapons/spike2.wav", 1, ATTN_NORM);
-	self.attack_finished = time + 0.2;
-	dir = aim(self, 1000);
-	launch_spike(gunner.origin + '0 0 30', dir);
-	newmis.touch = superspike_touch;
-	setmodel(newmis, "progs/laser.mdl");
-	setsize(newmis, VEC_ORIGIN, VEC_ORIGIN);
-	self.punchangle_x = -2;
-}*/
-
 //calculate vehicle_truck velocity and avelocity from wheels
 float (float dist, vector dir) truck_physics =
 {
@@ -453,37 +417,26 @@ float (float dist, vector dir) truck_physics =
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
 	local vector view = self.view_ofs;
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin; //start from the resting position
-	self.flyhack = self.origin - view; //was .z
-
-	local vector fakeview = (self.origin - view) * v_up * v_up;
+	local vector delta = self.origin - view;
+	local vector fakeview = delta * v_up * v_up;
 	setorigin (self, view + fakeview);  //make reset after finding delta
 	walkmove(steer_yaw, fakedist); //movetype_step physics
 	vec1 = notup(self.origin - view); //get to current position from start position
 	local vector work1 = vec1;
-	vec1 = vec1 + vdamping(self.flyhack);
-	//if (vlen(vec1) < (0.9 * fakedist)){ 
-	//dprint("short step\n");
-	//vec1 = self.flyhack;}//probably accomplishing nothing.
-	//vec1.z = zcontrol(vec1.z, deflection, damping); //damped spring ratio
+	vec1 = vec1 + vdamping(delta);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
 
 	self = truck.wheel2;
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
 	view = self.view_ofs;
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin;
-	self.flyhack = self.origin - view;
-	fakeview = (self.origin - view) * v_up * v_up;
+	delta = self.origin - view;
+	fakeview = up(delta);
 	setorigin(self, view + fakeview);
 	walkmove(steer_yaw, fakedist);
 	vec2 = notup(self.origin - view);
 	local vector work2 = vec2;
-	vec2 += vdamping(self.flyhack);
-	//vec2.z = fakeview.z;
-	//if (vlen(vec2) < (0.9 * fakedist)) {
-		//dprint("short step\n");
-	//	vec2 = self.flyhack;
-	//}
-	//vec2.z = zcontrol(vec2.z, deflection, damping);
+	vec2 += vdamping(delta);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
 
 	
@@ -510,30 +463,26 @@ float (float dist, vector dir) truck_physics =
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
 	view = self.view_ofs;
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin;
-	self.flyhack = self.origin - view;
-	fakeview = (self.origin - view) * v_up * v_up;
+	delta = self.origin - view;
+	fakeview = up(delta);
 	setorigin(self, view + fakeview);
 	walkmove(chassis_yaw, fakedist); //move from view
 	vec3 = notup(self.origin - view); //movestep delta
 	local vector work3 = vec3;
-	vec3 += vdamping(self.flyhack);
-	//vec3.z = fakeview.z;
-	//vec3.z = zcontrol(vec3.z, deflection, damping);
+	vec3 += vdamping(delta);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
 
 	self = truck.wheel4;
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
 	view = self.view_ofs;
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin;
-	self.flyhack = self.origin - view;
-	fakeview = (self.origin - view) * v_up * v_up;
+	delta = self.origin - view;
+	fakeview = up(delta);
 	setorigin(self, view + fakeview);
 	walkmove(chassis_yaw, fakedist);
 	vec4 = notup(self.origin - view);
 	local vector work4 = vec4;
-	vec4 += vdamping(self.flyhack);
-	//vec4.z = fakeview.z;
-	//vec4.z = zcontrol(vec4.z, deflection, damping);
+	vec4 += vdamping(delta);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
 
 	//=================================================================
@@ -564,7 +513,6 @@ float (float dist, vector dir) truck_physics =
 		grip1 = '0 0 0';
 	else {
 		grip1 = (3 - vup) * grip1; //mu*m*svec1.z^2
-		//vec1.z = vec1.z - tvec.z;
 		vec1 += tup;
 		}
 	vup = vec2 * v_up;
@@ -594,18 +542,14 @@ float (float dist, vector dir) truck_physics =
 	work1 = vlimit(work1, grip1) * throttle;
 	local vector control1 = vcontrol(work1, tvec, sgrip);
 	work1 += up(vec1);
-	//work1.z = vec1.z;
 	truck.wheel1.flyhack = work1;
 	control1 = control1 + work1;
-	//work1 = notup(work1) + up(work1) * throttle;
-	//work1.z = work1.z * throttle;
 
 	work2 = vlimit(work2, grip2) * throttle;
 	local vector control2 = vcontrol(work2, tvec, sgrip);
 	work2 += up(vec2);
 	truck.wheel2.flyhack = work2;
 	control2 = control2 + work2;
-	//work2.z = work2.z * throttle;
 
 	work3 = vlimit(work3, grip3) * throttle;
 	local vector control3 = vcontrol(work3, tvec, sgrip);
@@ -622,7 +566,7 @@ float (float dist, vector dir) truck_physics =
 	//actual travel
 	svec = (svec + ((control1 + control2 + control3 + control4) * 10));
 
-	local vector final_vec = v_forward + (work1 + work2 - work3 - work4);// * throttle;
+	local vector final_vec = v_forward + (work1 + work2 - work3 - work4);
 	local vector final_angs = vectoangles(final_vec);
 
 	dang = final_angs.x - truck.angles.x;
@@ -636,7 +580,7 @@ float (float dist, vector dir) truck_physics =
 	avec.y = ((dang) * 1);
 	local float final_yaw = vectoyaw(final_vec);
 
-	final_vec = v_right + (-work1 - work3 + work2 + work4);// * throttle;
+	final_vec = v_right + (-work1 - work3 + work2 + work4);
 	final_angs = vectoangles(final_vec);
 
 	dang = (final_angs.x - truck.angles.z);
