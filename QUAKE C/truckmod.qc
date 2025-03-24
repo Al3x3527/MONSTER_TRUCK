@@ -164,7 +164,7 @@ $frame right1 right2
 $frame left1 left2
 
 //try to walkmove if on ground, call traceline if flying
-void() cpywalk =
+void(float relative) cpywalk =
 {
 	local vector delta, deltay, deltax1, deltax2, deltaz;
 	local float dist, yaw;
@@ -172,8 +172,7 @@ void() cpywalk =
 	local vector fakeangles = self.owner.angles;
 	fakeangles.x = -fakeangles.x;
 	makevectors(fakeangles);
-	local vector view = self.view_ofs + self.owner.view_ofs;
-	view = view.x * v_forward + view.y * v_right + view.z * v_up + self.owner.origin;
+	
 	//from origin
 	local vector del = self.owner.origin - self.origin;
 	//from angular
@@ -184,7 +183,11 @@ void() cpywalk =
 	//from velocity
 	delta = deltay + deltax1 + deltax2 + deltaz + self.owner.velocity * 0.1;
 	//actual delta
-	delta = delta + view - self.origin;
+	if !(relative) {
+		local vector view = self.view_ofs + self.owner.view_ofs;
+		view = view.x * v_forward + view.y * v_right + view.z * v_up + self.owner.origin;
+		delta = delta + view - self.origin;
+		}
 	dist = vlen(delta);
 
 	local vector dang = self.owner.angles + self.v_angle - self.angles;
@@ -485,6 +488,25 @@ float (float dist, vector dir) truck_physics =
 	vec4 += vdamping(delta);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
 
+	/*
+	//collision boxes
+	self = truck.collider1;
+	view = self.view_ofs;
+	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin;
+	delta = self.origin - view;
+	fakeview = up(delta);
+	//setorigin(self, view + fakeview);
+	local vector work5 = (notup(delta) + vdamping(delta)) * 1;
+
+	self = truck.collider2;
+	view = self.view_ofs;
+	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin;
+	delta = self.origin - view;
+	fakeview = up(delta);
+	//setorigin(self, view + fakeview);
+	local vector work6 = (notup(delta) + vdamping(delta)) * 1;
+	*/
+
 	//=================================================================
 	//vehicle forces, target vector
 	//=================================================================
@@ -676,16 +698,14 @@ void(entity truck) spawn_truck_driver =
 }
 
 //orbital camera
-void(vector dir, vector offset) camera_orbit =
+void(vector look, vector offset) camera_orbit =
 {
 	local vector delta;
 	local float dist;
 	local entity truck = self.owner;
 	local vector avec = truck.avelocity;
-	local vector fakeangles = truck.angles;
-	fakeangles.x = -fakeangles.x;
-	makevectors(fakeangles);
-	local vector view = dir * offset.x;
+	
+	local vector view = look * offset.x;
 	view.z = view.z + offset.z;
 	local vector newangles = vectoangles(view);
 	view = view + truck.origin;
@@ -710,7 +730,7 @@ void(vector dir, vector offset) camera_orbit =
 		return;
 	}
 	self.velocity = (delta * 10 * 4 + self.velocity) / 5;
-
+	/*
 	//dismount here because we have angles
 	if (self.impulse == 1) {
 		self.impulse = 0;
@@ -729,6 +749,35 @@ void(vector dir, vector offset) camera_orbit =
 		remove(self.driver);
 		//switch_weapon(self.weapon1);
 	}
+	*/
+}
+
+void() truck_dismount =
+{
+	if (self.count > time)
+		return;
+	local entity truck = self.owner;
+	local vector fakeangles = truck.angles;
+	local vector view;
+	fakeangles.x = -fakeangles.x;
+	makevectors(fakeangles);
+	self.count = time + 0.5;
+		self.impulse = 0;
+		setmodel(self, self.model);
+		self.movetype = MOVETYPE_WALK;
+		view = v_forward * 10 - v_right * 50 + v_up * 40;
+		setorigin(self, truck.origin + view);
+		self.velocity = truck.velocity;
+		self.flags = self.flags - FL_VEHICLE - FL_NOTARGET - FL_GODMODE;
+		sprint(self, "Truck dismounted\n");
+		truck.driver = world;
+		self.owner = world;
+		cvar_set("cl_bob", "0.02");
+		cvar_set("cl_rollangle", "2");
+		self.driver.health = 0;
+		remove(self.driver);
+		//switch_weapon(self.weapon1);
+	
 }
 
 void() truck_jump =
@@ -799,7 +848,7 @@ void() truck_fix = //add trigger truck fix to elevators?
 void() truck_ImpulseCommands =
 {
 	if (self.impulse == 1)
-		return; //in camera
+		truck_dismount();
 	if (self.impulse == 2)
 		truck_jump();
 	if (self.impulse == 3)
@@ -827,12 +876,12 @@ if !(self.driver.health) {
 	sprint(self, "\nPress 1 to Dismount\nPress 2 to Jump\nPress 3 to Boost\n");
 	}
 	self.weaponmodel = string_null;
-	local vector dir = aim(world, 1000);
+	local vector look = aim(world, 1000);
 	local vector offset = '-100 0 30';
-	camera_orbit(dir, offset);
+	camera_orbit(look, offset);
 	truck_ImpulseCommands();
 	self = truck;
-	return (dir);
+	return (look);
 }
 
 void() truck_drive = [ $forward1, truck_drive ]
@@ -858,19 +907,19 @@ void() truck_drive = [ $forward1, truck_drive ]
 		self.walkframe = self.walkframe + 1;
 	local entity truck = self;
 	self = self.turret;
-	cpywalk();
+	cpywalk(0);
 	if (truck.passenger) {
 		self = truck.passenger;
-		cpywalk(); }
+		cpywalk(0); }
 	if (truck.collider1) {
 		self = truck.collider1;
-		cpywalk();}
+		cpywalk(0);}
 	if (truck.collider2) {
 		self = truck.collider2;
-		cpywalk();}
+		cpywalk(0);}
 	if (other) {
 		self = other.driver;
-		cpywalk();
+		cpywalk(0);
 	}
 };
 
@@ -972,17 +1021,50 @@ void()	gunner_shot4 = [$shotatt4, gunner_shot5] {self.weaponframe = 4; }
 void()	gunner_shot5 = [$shotatt5, gunner_shot6] {self.weaponframe = 5; }
 void()	gunner_shot6 = [$shotatt6, gunner_turret_atk1] {self.weaponframe = 6; }
 
-void() gunner_nail = //because ai don't click buttons
+void() W_FireNailgun1 =
+{
+	vector offset, v, org;
+
+if (!alive(self.enemy) || (enemy_range > 2)) {
+self.think = gunner_turret_atk1;
+return;}
+
+self.angles = vectoangles(self.enemy.origin - self.origin);
+v = self.angles;
+v_x *= -1;	// pitch comes back inverted from vectoangles :|
+makevectors(v);
+
+sound(self, CHAN_WEAPON, "weapons/rocket1i.wav", 1, ATTN_NORM);
+self.currentammo = self.ammo_nails = self.ammo_nails - 1;
+offset = VEC_ORIGIN;
+if (mod(self.cnt, 2)) offset_x = -2.5;
+else offset_x = 2.5;
+
+org = W_SpikeOrigin(offset);
+
+// default sv_maxvelocity is 2000, any higher leads to weird 
+// angular offsets caused by clamping the velocity
+launch_nail(org, v_forward * 1996);
+self.attack_finished += 0.09;
+}
+
+void()	gunner_nail1 = [$nailatt1, gunner_nail2] { W_FireNailgun1();
+self.effects = self.effects | EF_MUZZLEFLASH; }
+void()	gunner_nail2 = [$nailatt2, gunner_nail1] {W_FireNailgun1(); 
+self.effects = self.effects | EF_MUZZLEFLASH; }
+
+/*
+void() gunner_nail = [self.frame, gunner_nail]//because ai don't click buttons
 {
 	self.effects |= EF_MUZZLEFLASH;
 
 	if (self.frame != $nailatt1) self.frame = $nailatt1;
 	else self.frame += 1;
-	self.think = gunner_turret_atk3;
+	//self.think = gunner_turret_atk3;
 	self.nextthink = time + 0.125;	// TODO: oh fuck it, it works, you're never touching this again
 
 	self.weaponframe = self.cnt + 1;
-}
+} */
 
 void() gunner_light1 = [$light1, gunner_light2]
 {
@@ -1064,10 +1146,7 @@ void() gunner_check_atk =
 	if (enemy_range > 2)
 		return;
 
-	local vector shoot;
-	shoot = self.enemy.origin - self.origin;
-	shoot = vectoangles(shoot);
-	self.angles = shoot;
+	self.angles = vectoangles(self.enemy.origin - self.origin);
 
 	if (pilot.weapon == IT_SHOTGUN)
 	{
@@ -1079,7 +1158,8 @@ void() gunner_check_atk =
 		W_FireSuperShotgun1();
 	} else if (pilot.weapon == IT_NAILGUN || pilot.weapon == IT_SUPER_NAILGUN)
 	{
-		gunner_nail();
+		self.ammo_nails = 3;
+		gunner_nail1();
 		W_FireSpikes();
 	} else if (pilot.weapon == IT_GRENADE_LAUNCHER)
 	{
