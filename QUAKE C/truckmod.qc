@@ -196,7 +196,7 @@ void(float relative) cpywalk =
 	self.avelocity = dang * 10;
 
 	if (dist > 100) {
-		dprint("cpywalk setorigin\n");
+		//dprint("cpywalk setorigin\n");
 		setorigin(self, view);
 		self.velocity = self.owner.velocity;
 		return;
@@ -428,6 +428,13 @@ float (float dist, vector dir) truck_physics =
 	local vector work1 = vec1;
 	vec1 = vec1 + vdamping(delta);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
+	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
+	if (trace_ent != world) {
+		self.velocity = trace_ent.velocity; //not discrete
+		vec1 += trace_ent.velocity * 0.1;
+		dprint(vtos(trace_ent.velocity));
+		dprint(trace_ent.classname);
+		dprint(" trace_ent1\n");}
 
 	self = truck.wheel2;
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
@@ -441,6 +448,14 @@ float (float dist, vector dir) truck_physics =
 	local vector work2 = vec2;
 	vec2 += vdamping(delta);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
+	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
+	if (trace_ent != world) {
+		self.velocity = trace_ent.velocity;
+		vec2 += trace_ent.velocity * 0.1;
+		dprint(vtos(trace_ent.velocity));
+		dprint(trace_ent.classname);
+		dprint(" trace_ent2\n");
+	}
 
 	
 	//=================================================================
@@ -474,6 +489,14 @@ float (float dist, vector dir) truck_physics =
 	local vector work3 = vec3;
 	vec3 += vdamping(delta);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
+	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
+	if (trace_ent != world) {
+		self.velocity = trace_ent.velocity;
+		vec3 += trace_ent.velocity * 0.1;
+		dprint(vtos(trace_ent.velocity));
+		dprint(trace_ent.classname);
+		dprint(" trace_ent3\n");
+	}
 
 	self = truck.wheel4;
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
@@ -487,6 +510,14 @@ float (float dist, vector dir) truck_physics =
 	local vector work4 = vec4;
 	vec4 += vdamping(delta);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
+	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
+	if (trace_ent != world) {
+		self.velocity = trace_ent.velocity;
+		vec4 += trace_ent.velocity * 0.1;
+		dprint(vtos(trace_ent.velocity));
+		dprint(trace_ent.classname);
+		dprint(" trace_ent4\n");
+	}
 
 	/*
 	//collision boxes
@@ -979,7 +1010,7 @@ ApplyMultiDamage();
 
 void() W_FireSuperShotgun1 =
 {
-	local vector dir;
+	local vector v, dir;
 
 // for ai_nav:
 /*if (nav_w_nodeLinkSpecial())
@@ -998,7 +1029,9 @@ if (self.currentammo == 1)
 sound(self ,CHAN_WEAPON, "weapons/shotgn2.wav", 1, ATTN_NORM);
 
 self.punchangle_x = -4;
-makevectors(self.angles);
+v = self.angles;
+v_x *= -1;
+makevectors(v);
 
 self.currentammo = self.ammo_shells = self.ammo_shells - 2;
 dir = v_forward;
@@ -1139,7 +1172,7 @@ void() gunner_choose_yaw =
 void() gunner_check_atk =
 {
 	local entity pilot = self.owner.driver;
-	dprint("gunner check atk\n");
+	//dprint("gunner check atk\n");
 	gunner_choose_yaw();
 	if (!alive(self.enemy))
 		return;
