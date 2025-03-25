@@ -409,7 +409,7 @@ float (float dist, vector dir) truck_physics =
 	makevectors(fakeangles); //starting angles
 
 	local float steer_yaw = vectoyaw(dir);
-
+	dir.z = 0;
 	//=================================================================
 	//front wheels work against momentum
 	//=================================================================
@@ -519,25 +519,63 @@ float (float dist, vector dir) truck_physics =
 		dprint(" trace_ent4\n");
 	}
 
-	/*
-	//collision boxes
-	self = truck.collider1;
-	view = self.view_ofs;
-	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin;
-	delta = self.origin - view;
-	fakeview = up(delta);
-	//setorigin(self, view + fakeview);
-	local vector work5 = (notup(delta) + vdamping(delta)) * 1;
-
-	self = truck.collider2;
-	view = self.view_ofs;
-	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin;
-	delta = self.origin - view;
-	fakeview = up(delta);
-	//setorigin(self, view + fakeview);
-	local vector work6 = (notup(delta) + vdamping(delta)) * 1;
-	*/
-
+	//Collider Tracelines
+	chassis_vec = normalize(chassis_vec);
+	self = truck;
+	//check below for moving plat
+	traceline2(self.origin + '0 0 20', self.origin - '0 0 1', self, 1); //origin is below bbox
+	if (trace_ent != world)
+		local vector vec5 = trace_ent.velocity; //touching ground velocity (as velocity)
+	
+	if (reverse != 1){ //check in-front
+		self = truck.collider1;
+		traceline2(self.origin + (chassis_vec * 16), self.origin + (dir * 26), self, 1);
+		if (trace_plane_normal){
+		vec1 += -vec1 * trace_plane_normal * trace_plane_normal;
+		vec2 += -vec2 * trace_plane_normal * trace_plane_normal;
+		dprint("no boing1\n");
+		} else if (trace_allsolid) {
+			//vec1 += trace_plane_normal * 10;
+			//vec2 += trace_plane_normal * 10;
+			dprint("collider1 in a wall\n");
+		}
+		//check below front and rear for stuck
+		traceline2(self.origin + '0 0 20', self.origin + '0 0 3', self, 1); //front bottomed out
+		if ((trace_plane_normal) && (trace_fraction)) {
+			if (vec1_z < 0) vec1_z = truck.wheel1.velocity_z = 0;
+			if (vec2_z < 0) vec2_z = truck.wheel2.velocity_z = 0;
+		}
+		self = truck.collider2;
+		traceline2(self.origin + '0 0 20', self.origin + '0 0 3', self, 1); //front bottomed out
+		if ((trace_plane_normal) && (trace_fraction)) {
+			if (vec1_z < 0) vec3_z = truck.wheel3.velocity_z = 0;
+			if (vec2_z < 0) vec4_z = truck.wheel4.velocity_z = 0;
+		}
+	} else { //check behind
+		self = truck.collider2;
+		traceline2(self.origin - (chassis_vec * 12), self.origin - (chassis_vec * 22), self, 1);
+		if (trace_plane_normal){
+			vec3 += -vec3 * trace_plane_normal * trace_plane_normal;
+			vec4 += -vec4 * trace_plane_normal * trace_plane_normal;
+			dprint("no boing2\n");
+		} else if (trace_allsolid) {
+			//vec3 += trace_plane_normal * 10;
+			//vec4 += trace_plane_normal * 10;
+			dprint("collider2 in a wall\n");
+		}
+		//check below front and rear for stuck
+		traceline2(self.origin + '0 0 20', self.origin + '0 0 3', self, 1); //front bottomed out
+		if ((trace_plane_normal) && (trace_fraction)) {
+			if (vec1_z < 0) vec3_z = truck.wheel3.velocity_z = 0;
+			if (vec2_z < 0) vec4_z = truck.wheel4.velocity_z = 0;
+		}
+		self = truck.collider1;
+		traceline2(self.origin + '0 0 20', self.origin + '0 0 3', self, 1); //front bottomed out
+		if ((trace_plane_normal) && (trace_fraction)) {
+			if (vec1_z < 0) vec1_z = truck.wheel1.velocity_z = 0;
+			if (vec2_z < 0) vec2_z = truck.wheel2.velocity_z = 0;
+		}
+	}
 	//=================================================================
 	//vehicle forces, target vector
 	//=================================================================
@@ -552,7 +590,7 @@ float (float dist, vector dir) truck_physics =
 		fgrip = dist;
 	else fgrip = rgrip;
 	
-	chassis_vec = normalize(chassis_vec);
+
 	local vector grip1, grip2, grip3, grip4;
 	grip1 = normalize(work1) * fgrip + v_right * rgrip;
 	grip2 = normalize(work2) * fgrip + v_right * rgrip;
@@ -618,6 +656,8 @@ float (float dist, vector dir) truck_physics =
 
 	//actual travel
 	svec = (svec + ((control1 + control2 + control3 + control4) * 10));
+	if (vec5)
+		svec = notup(svec) + vec5;
 
 	local vector final_vec = v_forward + (work1 + work2 - work3 - work4);
 	local vector final_angs = vectoangles(final_vec);
