@@ -404,6 +404,11 @@ void(entity targ, entity inflictor, entity attacker, float damage, float dmgtype
 	float	save, take;
 
 	if (!damage || !targ.takedamage) return;
+
+	if (targ.flags & FL_CAMERA) {
+	targ.takedamage = 0;
+		return;
+	}
 	
 	if (targ == attacker)
 	{

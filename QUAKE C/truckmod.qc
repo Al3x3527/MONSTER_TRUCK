@@ -3,6 +3,7 @@
 //====================================
 
 float FL_VEHICLE = 16384;
+float FL_CAMERA = 32768;
 float I_AM_TURRET = 262144; //dumptruck_ds
 .entity driver;
 .entity passenger;
@@ -846,7 +847,8 @@ void() truck_dismount =
 		view = v_forward * 10 - v_right * 50 + v_up * 40;
 		setorigin(self, truck.origin + view);
 		self.velocity = truck.velocity;
-		self.flags = self.flags - FL_VEHICLE - FL_NOTARGET - FL_GODMODE;
+		self.flags -= FL_VEHICLE + FL_CAMERA + FL_GODMODE;
+		self.notrace = 0;
 		sprint(self, "Truck dismounted\n");
 		truck.driver = world;
 		self.owner = world;
@@ -950,7 +952,8 @@ if !(self.driver.health) {
 	cvar_set("cl_bob", "0");
 	cvar_set("cl_rollangle", "0");
 	spawn_truck_driver(truck);
-	self.flags = self.flags + FL_GODMODE;
+	self.flags += FL_CAMERA + FL_GODMODE;
+	self.notrace = 1;
 	sprint(self, "\nPress 1 to Dismount\nPress 2 to Jump\nPress 3 to Boost\n");
 	}
 	self.weaponmodel = string_null;
