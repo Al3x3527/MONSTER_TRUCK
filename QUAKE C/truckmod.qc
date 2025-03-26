@@ -793,6 +793,9 @@ void(vector look, vector offset) camera_orbit =
 	delta = delta - self.origin;
 	dist = vlen(delta);
 
+	if (self.flags & FL_ONGROUND)
+		self.flags = self.flags - FL_ONGROUND;
+
 	local vector dang = newangles - self.angles;
 	if (dang.y > 180) dang.y = -360 + dang.y;
 	else if (dang.y < -180) dang.y = 360 + dang.y;
@@ -1021,7 +1024,7 @@ void() truck_touch =
 	if (!(other.flags & FL_CLIENT))
 		return;
 
-	if ((self.classname == "truck_bed") || (self.classname == "truck_front"))
+	if (self.classname == "truck_collider")
 		self = self.owner;
 
 	if (self.driver == other) return;
@@ -1477,7 +1480,7 @@ void() spawn_truck_bed =
 	self.touch = truck.touch;
 	truck.collider2 = self;
 	self.owner = truck;
-	self.classname = "truck_bed";
+	self.classname = "truck_collider";
 	self = truck;
 }
 
@@ -1495,7 +1498,7 @@ void() spawn_truck_front =
 	self.touch = truck.touch;
 	truck.collider1 = self;
 	self.owner = truck;
-	self.classname = "truck_front";
+	self.classname = "truck_collider";
 	self = truck;
 }
 

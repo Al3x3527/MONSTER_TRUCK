@@ -37,6 +37,12 @@ BackpackTouch
 */
 void() BackpackTouch =
 {
+
+if (other.flags & FL_VEHICLE)
+		if (other.classname != "monster_truck")
+			other = other.owner.driver;
+		else other = other.driver;
+
 	if (!CheckValidTouch()) return;
 
 	// coop 1: players can only pick up their own backpacks

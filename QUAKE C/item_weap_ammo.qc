@@ -61,6 +61,11 @@ void() weapon_touch =
 {
 	float	leave, nsw;
 
+	if (other.flags & FL_VEHICLE)
+		if (other.classname != "monster_truck")
+			other = other.owner.driver;
+		else other = other.driver;
+
 	if (!CheckValidTouch()) return;
 
 	if (deathmatch == 2 || deathmatch == 3 || coop > 1)
@@ -331,6 +336,11 @@ ammo_touch
 */
 void() ammo_touch =
 {
+	if (other.flags & FL_VEHICLE)
+		if (other.classname != "monster_truck")
+			other = other.owner.driver;
+		else other = other.driver;
+
 	if (!CheckValidTouch()) return;
 
 	// structured in dual if's instead of using && to preserve ammo_touch maphacks
