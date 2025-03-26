@@ -798,7 +798,7 @@ void(vector look, vector offset) camera_orbit =
 	else if (dang.y < -180) dang.y = 360 + dang.y;
 	self.avelocity = (dang * 10 * 4 + self.avelocity) / 5;
 
-	if (dist > 200) {
+	if (dist > (offset.z - offset.x)) {
 		//dprint("cpywalk setorigin\n");
 		setorigin(self, truck.origin + '0 0 40'); //when stuck
 		self.velocity = truck.velocity;
