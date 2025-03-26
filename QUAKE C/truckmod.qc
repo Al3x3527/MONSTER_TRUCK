@@ -173,6 +173,9 @@ void(float relative) cpywalk =
 	fakeangles.x = -fakeangles.x;
 	makevectors(fakeangles);
 	
+	if ((self.flags & FL_ONGROUND) && (self.movetype & MOVETYPE_FLY))
+		self.flags = self.flags - FL_ONGROUND; //this is dumb
+
 	//from origin
 	local vector del = self.owner.origin - self.origin;
 	//from angular
@@ -763,7 +766,7 @@ void(entity truck) spawn_truck_driver =
 	else self.view_ofs = '5 -7 20';
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
-	self.health = 100; //triggers doors
+	self.health = 1; //triggers doors
 
 	setorigin(self, truck.origin + self.view_ofs); //fix next truck think
 	self = player;
@@ -978,9 +981,17 @@ void() truck_drive = [ $forward1, truck_drive ]
 	if (dist)
 		self.walkframe = self.walkframe + 1;
 	local entity truck = self;
-	self = self.turret;
-	cpywalk(0);
+	if (truck.turret){
+		if (!alive(truck.turret)) {
+			remove(truck.turret);
+			spawn_truck_gunner2();}
+		self = truck.turret;
+		cpywalk(0);
+		}
 	if (truck.passenger) {
+		if (!alive(truck.passenger)) {
+			remove(truck.passenger);
+			spawn_truck_passenger2();}
 		self = truck.passenger;
 		cpywalk(0); }
 	if (truck.collider1) {
@@ -990,6 +1001,9 @@ void() truck_drive = [ $forward1, truck_drive ]
 		self = truck.collider2;
 		cpywalk(0);}
 	if (other) {
+		if (!alive(other.driver)) {
+			remove(other.driver);
+			spawn_truck_driver(truck);}
 		self = other.driver;
 		cpywalk(0);
 	}
@@ -1037,7 +1051,9 @@ void() W_FireShotgun1 =
 sound(self, CHAN_WEAPON, "weapons/guncock.wav", 1, ATTN_NORM);
 
 self.punchangle_x = -2;
-makevectors(self.angles);
+local vector v = self.angles;
+v_x *= -1;
+makevectors(v);
 
 self.currentammo = self.ammo_shells = self.ammo_shells - 1;
 dir = v_forward;
@@ -1273,6 +1289,7 @@ void() spawn_truck_gunner =
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
 	self.flags = FL_MONSTER + FL_GODMODE;
+	self.health = 1;
 	
 	setorigin(self, truck.origin + self.view_ofs); //fix next truck think
 	self.th_missile = gunner_turret_atk1;
@@ -1294,6 +1311,7 @@ void() spawn_truck_gunner2 =
 	self.view_ofs = '-35 0 25';
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
+	self.health = 1;
 
 	setorigin(self, truck.origin + self.view_ofs); //fix next truck think
 	self.th_missile = gunner_turret_atk1;
@@ -1315,6 +1333,7 @@ void() spawn_truck_passenger =
 	self.view_ofs = '10 15 40';
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
+	self.health = 1;
 
 	setorigin(self, truck.origin + self.view_ofs);
 	self = truck;
@@ -1333,6 +1352,7 @@ void() spawn_truck_passenger2 =
 	self.view_ofs = '5 7 20';
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
+	self.health = 1;
 
 	setorigin(self, truck.origin + self.view_ofs);
 	self = truck;
