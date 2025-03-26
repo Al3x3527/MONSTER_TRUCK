@@ -52,64 +52,7 @@ void(entity to) weapon_give =
 	stuffcmd (to, "bf\n");
 }
 
-/*
-=============
-weapon_touch
-=============
-*/
-void() weapon_touch =
-{
-	float	leave, nsw;
-
-	if (other.flags & FL_VEHICLE)
-		if (other.classname != "monster_truck")
-			other = other.owner.driver;
-		else other = other.driver;
-
-	if (!CheckValidTouch()) return;
-
-	if (deathmatch == 2 || deathmatch == 3 || coop > 1)
-		leave = 1;
-	else
-		leave = 0;
-	
-	if (leave)
-	{
-		if (other.items & self.items == self.items)	// already have it
-		{
-			weapon_touch_coop();
-			return;
-		}
-	}
-	
-	if (self.items & other.items) nsw = TRUE;
-
-	weapon_give(other);
-	// change to the weapon
-	if (nsw)
-		SUB_CallAsSelf(W_ResetWeaponState, other);
-	else
-		W_BetterWeapon(other, self.items);
-
-	if (coop == 1)
-	{
-		entity pl = get_next_client(other);
-		while (pl != other)
-		{
-			weapon_give(pl);
-			pl = get_next_client(pl);
-		}
-	}
-	
-	if (leave)
-	{
-		weapon_touch_coop();
-		return;
-	}
-
-	ItemTouched();
-}
-
+void() weapon_touch = {SUB_weapon_touch();}
 
 /*
 ============
@@ -329,64 +272,7 @@ void() weapon_axe =
 
 // ===============================================================================
 
-/*
-============
-ammo_touch
-============
-*/
-void() ammo_touch =
-{
-	if (other.flags & FL_VEHICLE)
-		if (other.classname != "monster_truck")
-			other = other.owner.driver;
-		else other = other.driver;
-
-	if (!CheckValidTouch()) return;
-
-	// structured in dual if's instead of using && to preserve ammo_touch maphacks
-	if (self.ammo_shells)
-	{
-		if (other.ammo_shells < MAX_AMMO_SHELLS)
-			other.ammo_shells += self.ammo_shells;
-		else return;
-	}
-	else if (self.ammo_nails)
-	{
-		if (other.ammo_nails < MAX_AMMO_NAILS)
-			other.ammo_nails += self.ammo_nails;
-		else return;
-	}
-	else if (self.ammo_rockets)
-	{
-		if (other.ammo_rockets < MAX_AMMO_ROCKETS)
-			other.ammo_rockets += self.ammo_rockets;
-		else return;
-	}
-	else if (self.ammo_cells)
-	{
-		if (other.ammo_cells < MAX_AMMO_CELLS)
-			other.ammo_cells += self.ammo_cells;
-		else return;
-	}
-	//else return;	
-
-	bound_ammo(other);
-	
-	sprint (other, "You got the ");
-	sprint (other, self.netname);
-	sprint (other, "\n");
-
-	sound (other, CHAN_ITEM, "weapons/lock4.wav", 1, ATTN_NORM);
-	stuffcmd (other, "bf\n");
-
-	if (!self.weapon)
-		SUB_CallAsSelf(W_SelectBestWeapon, other);
-	else
-		// if changed current ammo, update it	
-		SUB_CallAsSelf(W_SetCurrentAmmo, other);
-	
-	ItemTouched();
-}
+void() ammo_touch = {SUB_ammo_touch();}
 
 /*
 ============

@@ -165,4 +165,4 @@ void() ServerflagsCommand =
 	dev_serverflags();
 };
 
-
+void() ImpulseCommands = {SUB_ImpulseCommands();}
