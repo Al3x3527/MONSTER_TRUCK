@@ -523,10 +523,10 @@ float (float dist, vector dir) truck_physics =
 	chassis_vec = normalize(chassis_vec);
 	self = truck;
 	//check below for moving plat
-	traceline2(self.origin + '0 0 20', self.origin - '0 0 1', self, 1); //origin is below bbox
+	traceline2(self.origin + '0 0 20', self.origin - '0 0 3', self, 1); //origin is below bbox
 	if (trace_ent != world)
 		local vector vec5 = trace_ent.velocity; //touching ground velocity (as velocity)
-	
+	/*
 	if (reverse != 1){ //check in-front
 		self = truck.collider1;
 		traceline2(self.origin + (chassis_vec * 16), self.origin + (dir * 26), self, 1);
@@ -576,6 +576,7 @@ float (float dist, vector dir) truck_physics =
 			if (vec2_z < 0) vec2_z = truck.wheel2.velocity_z = 0;
 		}
 	}
+	*/
 	//=================================================================
 	//vehicle forces, target vector
 	//=================================================================
