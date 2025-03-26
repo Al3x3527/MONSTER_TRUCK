@@ -22,9 +22,10 @@ void() SUB_ImpulseCommands =
 {
 	if (!self.impulse) return;
 
+	//truck mod just this check
 	if (self.flags & FL_VEHICLE) {
 		if (self.impulse <= 4)
-			return;
+			return; //truck impulses in m_truckmod.qc
 	}
 
 	if (self.impulse < 9)
@@ -144,7 +145,6 @@ void() SUB_ImpulseCommands =
 		default:
 			return;
 		}
-
 		self.impulse = 0;
 }
 /*
@@ -154,8 +154,8 @@ BackpackTouch
 */
 void() SUB_BackpackTouch =
 {
-
-if (other.flags & FL_VEHICLE)
+	//truck mod just this check
+	if (other.flags & FL_VEHICLE)
 		if (other.classname != "monster_truck")
 			other = other.owner.driver;
 		else other = other.driver;
@@ -257,6 +257,7 @@ ammo_touch
 */
 void() SUB_ammo_touch =
 {
+	//truck mod just this check
 	if (other.flags & FL_VEHICLE)
 		if (other.classname != "monster_truck")
 			other = other.owner.driver;
@@ -315,6 +316,7 @@ void() SUB_weapon_touch =
 {
 	float	leave, nsw;
 
+	//truck mod just this check
 	if (other.flags & FL_VEHICLE)
 		if (other.classname != "monster_truck")
 			other = other.owner.driver;

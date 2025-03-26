@@ -4,6 +4,27 @@
 Monster_Truck
 
 ============================================================
+known bugs:
+* chance of elevator freakout, especially going up
+X chance of camera freakout when gunner has an enemy (that is dead?)
+* truck pulls to the left when low grip or in air
+* stairstep accelerates up, even when coasting
+* truck fix doesn't work on edges of platforms
+X ai can't find each other sometimes
+* truck clips too much into walls causing freakouts on elevators
+* truck crabs a little when steering at a small angle
+* truck sinks partially into elevator going down sometimes
+
+uniplemented ideas:
+* a way for the truck and player to take damage (truck health as armor value?)
+* mounted machinegun model and animations
+* headlights and taillights
+* engine sfx
+* hostile monster_trucks
+* truck collisions
+* truck damage states
+* truck death animations/explosions
+* player use of other "seats"
 */
 
 //forwards
@@ -120,14 +141,12 @@ vector(vector set, vector sys, float k) vcontrol =
 			if (set.x < (sys.x - set.x))
 				set.x = ((set.x - sys.x) * k) - set.x;
 			else set.x = ((sys.x - set.x) - sys.x) * k + (set.x - sys.x);
-			//dprint("vcontrol x\n");
 		}
 	} else {
 		if (set.x > sys.x) {
 			if (set.x > (sys.x - set.x))
 				set.x = ((set.x - sys.x) * k) - set.x;
 			else set.x = ((sys.x - set.x) - sys.x) * k + (set.x - sys.x);
-			//dprint("vcontrol -x\n");
 		}
 	}
 	if (set.y > 0) {
@@ -135,14 +154,12 @@ vector(vector set, vector sys, float k) vcontrol =
 			if (set.y < (sys.y - set.y))
 				set.y = ((set.y - sys.y) * k) - set.y;
 			else set.y = ((sys.y - set.y) - sys.y) * k + (set.y - sys.y);
-			//dprint("vcontrol y\n");
 		}
 	} else {
 		if (set.y > sys.y) {
 			if (set.y > (sys.y - set.y))
 				set.y = ((set.y - sys.y) * k) - set.y;
 			else set.y = ((sys.y - set.y) - sys.y) * k + (set.y - sys.y);
-			//dprint("vcontrol -y\n");
 		}
 	}
 	if (set.z > 0) {
@@ -150,14 +167,12 @@ vector(vector set, vector sys, float k) vcontrol =
 			if (set.z < (sys.z - set.z))
 				set.z = ((set.z - sys.z) * k) - set.z;
 			else set.z = ((sys.z - set.z) - sys.z) * k + (set.z - sys.z);
-			//dprint("vcontrol z\n");
 		}
 	} else {
 		if (set.z > sys.z) {
 			if (set.z > (sys.z - set.z))
 				set.z = ((set.z - sys.z) * k) - set.z;
 			else set.z = ((sys.z - set.z) - sys.z) * k + (set.z - sys.z);
-			//dprint("vcontrol -z\n");
 		}
 	}
 	return set;
@@ -168,7 +183,7 @@ vector(vector set, vector sys, float k) vcontrol =
 vector(vector delta) vdamping =
 {
 	local float deflection = 3;
-	local float c = 0.6; //damping
+	local float c = 0.6;
 	local vector sys = delta * v_up * v_up;
 	local vector set = deflection * v_up;
 	if !(set)
@@ -574,7 +589,6 @@ void(vector look, vector offset) camera_orbit =
 	view += truck.origin;
 	local vector del = truck.origin - self.origin;
 	delta = truck.velocity * 0.1;
-	//actual delta
 	delta += view;
 	delta -= self.origin;
 	dist = vlen(delta);
@@ -588,7 +602,9 @@ void(vector look, vector offset) camera_orbit =
 	self.avelocity = (dang * 10 * 4 + self.avelocity) / 5;
 
 	if (dist > (offset.z - offset.x)) {
-		setorigin(self, truck.origin + '0 0 40');
+		view = look * -40;
+		view.z += 40;
+		setorigin(self, truck.origin + view);
 		self.velocity = truck.velocity;
 		return;
 	}
@@ -716,7 +732,7 @@ if !(self.driver.health) {
 	spawn_truck_driver(truck);
 	self.flags += FL_CAMERA + FL_GODMODE;
 	self.notrace = 1;
-	sprint(self, "\nPress 1 to Dismount\nPress 2 to Jump\nPress 3 to Boost\n");
+	sprint(self, "\nPress 1 to Dismount\nPress 2 to Jump\nPress 3 to Boost\nPress 4 to Reset\n");
 	}
 	self.weaponmodel = string_null;
 	local vector look = aim(world, 1000);
@@ -804,6 +820,10 @@ void() truck_touch =
 		}
 }
 
+/*===================================================
+Truck Gunner Stuff
+===================================================*/
+
 void() W_FireShotgun1 =
 {
 	local vector dir;
@@ -867,6 +887,7 @@ void() W_FireNailgun1 =
 
 if (!alive(self.enemy) || (enemy_range > 2)) {
 self.think = gunner_turret_atk1;
+dprint("nailgun1 e out of range\n");
 return;}
 
 self.angles = vectoangles(self.enemy.origin - self.origin);
@@ -924,15 +945,18 @@ void() gunner_rocket6 = [$rockatt6, gunner_turret_atk1] {self.weaponframe = 6; }
 void() gunner_find_enemy =
 {
 	local entity m;
-	if (alive(self.enemy) && (range(self.enemy) < 3) && visible(self.enemy)) 
-		return;
+	if (alive(self.enemy) && (range(self.enemy) < 3) && visible(self.enemy)) {
+		dprint("return from gfe 1\n");
+		return;}
 
 	m = nextent(world);
 	while (self.enemy == world) {
 	if ((m.flags & FL_MONSTER)
+	&& alive(m)
 	&& (visible(m))
-	&& (range(m) < 3))
+	&& (range(m) < 3)) {
 	self.enemy = m;
+	dprint("new gunner enemy\n");}
 
 	m = nextent(m);
 	if (m == world)
@@ -965,15 +989,20 @@ void() gunner_check_atk =
 	local entity pilot = self.owner.driver;
 	//dprint("gunner check atk\n");
 	gunner_choose_yaw();
-	if (!alive(self.enemy))
-		return;
-	if (enemy_range > 2)
-		return;
+	if (!alive(self.enemy)) {
+	self.enemy = world;
+	dprint("gca e not alive\n");
+	return;}
+		
+	if (enemy_range > 3) {
+		dprint("gca e out of range\n");
+		return;}
 
 	self.angles = vectoangles(self.enemy.origin - self.origin);
-
+	//dprint("gca angles set\n"); np
 	if (pilot.weapon == IT_SHOTGUN)
 	{
+		dprint("gunner shot called\n");
 		gunner_shot1();
 		W_FireShotgun1();
 	} else if (pilot.weapon == IT_SUPER_SHOTGUN)
@@ -1006,6 +1035,10 @@ void() gunner_check_atk =
 void() gunner_turret_atk1 = [0, gunner_turret_atk2] {gunner_choose_yaw();}
 void() gunner_turret_atk2 = [0, gunner_turret_atk3] {gunner_choose_yaw();}
 void() gunner_turret_atk3 = [self.frame, gunner_turret_atk1] {gunner_check_atk();}
+
+//===================================================
+//SPAWNING
+//===================================================
 
 //demo gunner
 void() spawn_truck_gunner =
@@ -1048,7 +1081,6 @@ void() spawn_truck_passenger =
 }
 
 //physics wheels
-
 void(float i) spawn_truck_wheel =
 {
 	local entity truck = self;
