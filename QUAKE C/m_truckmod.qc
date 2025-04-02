@@ -141,8 +141,8 @@ vector(vector work, vector tvec, vector dir, float mu) grip_control =
 	local vector grip;
 	local vector lateral;
 	if !(dir) dir = v_forward;
-	dir_z = 0;
 	lateral_x = dir_y; lateral_y = -dir_x;
+	//lateral *= dir * normalize(tvec); not the problem
 	//dprint(vtos(dir)); dprint(" dir\n");
 if (work) { //powered wheels should work against dir in decel (dir backwards)
 	//dprint(vtos(tvec)); dprint(" fake tvec\n");
@@ -151,9 +151,12 @@ if (work) { //powered wheels should work against dir in decel (dir backwards)
 		grip = '0 0 0';
 	else {//test full work against grip (lengths)
 	grip = dir * mu; 
+	speed = normalize(work) * dir; //modify by throttle
 	work = vlen(work) * dir;
+	if (speed < 0)
+		return work;
 	work -= tvec; //only difference no runaway
-	speed = vlen(work);
+	speed *= vlen(work);
 	}
 	//dprint(ftos(speed)); dprint("speed\n");
 	//dprint(vtos(grip)); dprint("starting grip"); dprint(ftos(mu)); dprint("mu\n");
@@ -162,7 +165,7 @@ if (work) { //powered wheels should work against dir in decel (dir backwards)
 		//dprint("enough grip\n");
 		} else {
 		//dprint("not enough grip\n");
-		work = grip; //work and grip same direction
+		work = mu * normalize(work); //work and grip same direction
 		grip = '0 0 0';
 		}
 	//dprint(vtos(grip)); dprint("remaining grip\n");
@@ -228,7 +231,7 @@ float (float dist, vector dir) truck_physics =
 	local float fakedist = dist;
 	if !(dist) {
 		throttle = -1;
-		fakedist = vlen(tvec)/2;
+		fakedist = vlen(tvec)/1.2;
 		}
 
 	local vector fakeangles = truck.angles;
@@ -266,7 +269,9 @@ float (float dist, vector dir) truck_physics =
 
 //differential stuff - front
 
-	local float diff = truck.wheel1.view_ofs.y * sin(90 - dang);
+	local float diff = 0;
+	if (dist)
+		diff = truck.wheel1.view_ofs.y * sin(90 - dang);
 	local float fakediff = 0;
 	local float dist1 = fakedist + diff * -direction; //differential effect
 	if (dist1 < 0) {
@@ -346,7 +351,9 @@ float (float dist, vector dir) truck_physics =
 	dang = -chassis_yaw + start_yaw;
 	if (dang > 180) dang = -360 + dang;
 	else if (dang < -180) dang = 360 + dang;
-	diff = truck.wheel1.view_ofs.y * sin(90 - dang) * throttle;
+	if (dist)
+		diff = truck.wheel1.view_ofs.y * sin(90 - dang);
+	else diff = 0;
 
 	fakediff = 0;
 	local float dist3 = fakedist + diff * -direction;
