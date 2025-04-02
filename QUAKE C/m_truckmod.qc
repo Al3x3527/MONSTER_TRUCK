@@ -142,30 +142,31 @@ vector(vector work, vector tvec, vector dir, float mu) grip_control =
 	local vector lateral;
 	if !(dir) dir = v_forward;
 	dir_z = 0;
+	lateral_x = dir_y; lateral_y = -dir_x;
 	//dprint(vtos(dir)); dprint(" dir\n");
-if (work) {
-		lateral = normalize(notup('1 1 1' - dir));
-	dprint(vtos(tvec)); dprint(" fake tvec\n");
-	dprint(vtos(work)); dprint(" starting work\n");
+if (work) { //powered wheels should work against dir in decel (dir backwards)
+	//dprint(vtos(tvec)); dprint(" fake tvec\n");
+	//dprint(vtos(work)); dprint(" starting work\n");
 	if (mu < 0)
 		grip = '0 0 0';
 	else {//test full work against grip (lengths)
-	grip = dir * mu; //vlen(grip) = vup
-	work = work - tvec; //only difference no runaway
+	grip = dir * mu; 
+	work = vlen(work) * dir;
+	work -= tvec; //only difference no runaway
 	speed = vlen(work);
 	}
 	//dprint(ftos(speed)); dprint("speed\n");
 	//dprint(vtos(grip)); dprint("starting grip"); dprint(ftos(mu)); dprint("mu\n");
-	if (mu > speed) {//if grip was greater, grip -= work; grip *= -1
+	if (mu > speed) {
 		grip -= work;//find difference between full work and grip
 		//dprint("enough grip\n");
-		} else {//if work was greater, work = vlen(grip) * normalize(work)
+		} else {
 		//dprint("not enough grip\n");
 		work = grip; //work and grip same direction
-		grip = '0 0 0';//; grip = 0
+		grip = '0 0 0';
 		}
 	//dprint(vtos(grip)); dprint("remaining grip\n");
-	dprint(vtos(work)); dprint("work after full grip\n");
+	//dprint(vtos(work)); dprint("work after full grip\n");
 	if !(grip) mu = 0; //tire uses the rest of grip against tvec,n
 	else mu = vlen(grip); //do rolling grip first
 
@@ -182,10 +183,8 @@ if (work) {
 		mu = 0;
 	}
 	//dprint(vtos(mu * dir)); dprint("remaining grip ar\n");
-	dprint(vtos(work)); dprint("work after rolling\n");
-}
-	else {
-		lateral = v_right;
+	//dprint(vtos(work)); dprint("work after rolling\n");
+	}
 	}
 	if (mu) //sliding resistance
 	{
@@ -198,12 +197,17 @@ if (work) {
 			work -= speed * grip; //negate lateral
 		} else work -= mu * grip;
 	} //vectors, dir, vec, tvec, work in; work out
-	}
+	
 	//dprint(vtos(mu * grip)); dprint("lateral grip\n");
-	//dprint(vtos(work)); dprint("work after lateral\n");
-	dprint(vtos(work + tvec)); dprint("final vel\n");
+	//dprint(vtos(work)); dprint("final work\n");
+	//dprint(vtos(work + tvec)); dprint("final vel\n");
 	return work;
 }
+//=================================================================
+
+//Truck Physics
+
+//=================================================================
 
 //calculate vehicle_truck velocity and avelocity from wheels
 float (float dist, vector dir) truck_physics =
@@ -224,7 +228,7 @@ float (float dist, vector dir) truck_physics =
 	local float fakedist = dist;
 	if !(dist) {
 		throttle = -1;
-		//fakedist = vlen(tvec)/2;
+		fakedist = vlen(tvec)/2;
 		}
 
 	local vector fakeangles = truck.angles;
@@ -297,9 +301,6 @@ float (float dist, vector dir) truck_physics =
 		self.velocity = trace_ent.velocity; //not discrete
 		vec1 += trace_ent.velocity * 0.1;
 		}
-	//dprint(ftos(fakedist)); dprint(" fakedist ");
-	//dprint(ftos(dist1)); dprint(" truedist\n");
-	//dprint(vtos(work1)); dprint("work1\n");
 	view -= truck.origin;
 
 	local vector tvec1 = svec
@@ -345,16 +346,16 @@ float (float dist, vector dir) truck_physics =
 	dang = -chassis_yaw + start_yaw;
 	if (dang > 180) dang = -360 + dang;
 	else if (dang < -180) dang = 360 + dang;
-	diff = truck.wheel1.view_ofs.y * sin(90 - dang);
+	diff = truck.wheel1.view_ofs.y * sin(90 - dang) * throttle;
 
 	fakediff = 0;
-	local float dist3 = fakedist + diff * direction;
+	local float dist3 = fakedist + diff * -direction;
 	if (dist3 < 0) {
 		fakediff = -dist3;
 		dist3 = 0;
 	} else if (dist3 > fakedist) dist3 = fakedist;
 
-	local float dist4 = fakedist + diff * -direction + fakediff;
+	local float dist4 = fakedist + diff * direction + fakediff;
 	if (dist4 < 0) {
 		dist3 -= dist4;
 		dist4 = 0;
@@ -423,13 +424,17 @@ float (float dist, vector dir) truck_physics =
 	//vehicle forces, target vector
 	//=================================================================
 
+	dprint(vtos(dir)); dprint("dir\n");
 	dprint(vtos(tvec)); dprint("true tvec\n");
+	dprint(vtos(work1)); dprint("work1\n");
+	dprint(vtos(work2)); dprint("work2\n");
+	dprint(vtos(work3)); dprint("work3\n");
+	dprint(vtos(work4)); dprint("work4\n");
 	
 	local float vup = -vec1 * v_up + 3;
-	work1 = grip_control(work1, tvec, dir, vup);
-
+	work1 = grip_control(work1, tvec, dir * throttle, vup);
 	vup = -vec2 * v_up + 3;
-	work2 = grip_control(work2, tvec, dir, vup);
+	work2 = grip_control(work2, tvec, dir * throttle, vup);
 	vup = -vec3 * v_up + 3;
 	work3 = grip_control('0 0 0', tvec, chassis_vec, vup);
 	vup = -vec4 * v_up + 3;
@@ -447,6 +452,11 @@ float (float dist, vector dir) truck_physics =
 
 	work4 += up(vec4);
 	truck.wheel4.flyhack = work4;
+
+	dprint(vtos(work1)); dprint("f work1\n");
+	dprint(vtos(work2)); dprint("f work2\n");
+	dprint(vtos(work3)); dprint("f work3\n");
+	dprint(vtos(work4)); dprint("f work4\n");
 local vector work = work1 + work2 + work3 + work4;
 dprint(vtos(work)); dprint("total work\n");
 
