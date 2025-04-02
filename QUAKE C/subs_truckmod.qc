@@ -365,3 +365,182 @@ void() SUB_weapon_touch =
 
 	ItemTouched();
 }
+
+/*
+================
+PlayerPreThink
+
+Called every frame before physics are run
+================
+*/
+void() SUB_PlayerPreThink =
+{
+	if (initCleanup)
+	{
+		fog_setFromEnt(self, self);
+		if (!(self.customflags & (CFL_PLUNGE | CFL_LIMBO)))
+		{
+			TintScreen(self, 0);
+		} else if (self.customflags & CFL_LIMBO)
+		{
+			TintScreen(self, 255);
+		}
+	}
+
+	if (intermission || self.deadflag == DEAD_SPECTATING)
+	{
+		IntermissionThink();	// otherwise a button could be missed between
+		return;					// the think tics
+	}
+	makevectors(self.v_angle);		// is this still used
+									// lunaran: "yes"
+
+	CheckRules();
+
+	if (self.deadflag >= DEAD_DEAD)
+	{
+		PlayerDeathThink();
+		return;
+	}
+
+	if (self.deadflag == DEAD_DYING)
+		return;	// dying, so do nothing
+
+	self.wait = 0;
+
+	PlayerWaterTest();
+	WaterMove();
+	if (self.waterlevel == WL_WAIST)
+		CheckWaterJump();
+
+	//truckmod just this check ======================================================
+	if !(self.flags & FL_VEHICLE) {
+		if (self.button2)
+		{
+			PlayerJump();
+		} else
+		{
+			self.flags = self.flags | FL_JUMPRELEASED;
+		}
+	}
+
+	// teleporters can force a non-moving pause time	
+		if (time < self.pausetime)
+			self.velocity = '0 0 0';
+
+		if (time > self.attack_finished &&
+			!W_HasAmmo(self.weapon) &&
+			self.weapon != IT_AXE
+			)
+		{
+			W_SelectBestWeapon();
+		}
+
+		if (self.movetype == MOVETYPE_NOCLIP)
+		{
+			self.flags = self.flags | FL_FLY;
+		}
+
+		// ai_nav
+		//nav_editorThink();
+}
+/*
+===========
+FindTarget
+
+Self is currently not attacking anything, so try to find a target
+
+Returns TRUE if an enemy was sighted
+
+When a player fires a missile, the point of impact becomes a fakeplayer so
+that monsters that see the impact will respond as if they had seen the
+player.
+============
+*/
+float() SUB_FindTarget =
+{
+	local entity	client;
+	local float		r;
+
+	//dprint("in findtarget\n");
+	// (spawnflags & 3) unhacked by lunaran since I actually want to use spawnflag 2 for something
+	// apparently all the mega-enforcers in lunsp1 were ambush because of this ... oops
+	if (sight_entity_time >= time - 0.1 && (!(self.spawnflags & SPAWN_AMBUSH)))
+	{
+		client = sight_entity;
+		if (client.enemy == self.enemy)
+			return FALSE;
+	} else
+	{
+		// to avoid spending too much time, only check a single client (or fakeclient)
+		// this means multiplayer games have slightly slower noticing monsters
+		client = checkclient();
+		if (!client)
+			return FALSE;	// no check entities in PVS
+	}
+
+	if (client == self.enemy)
+		return FALSE;
+
+	if (!FilterTarget(client))
+		return FALSE;
+	if (client.classname != "player" && !FilterTarget(client.enemy))
+		return FALSE;	// don't wake up other monsters in notarget mode
+
+	if (!visible(client))
+		return FALSE;
+
+	r = range(client);
+
+	if (r == RANGE_NEAR)
+	{
+		if (client.show_hostile < time && !infront(client))
+			return FALSE;
+	} else if (r == RANGE_MID || r == RANGE_FAR)
+	{
+		if (!infront(client))
+			return FALSE;
+	}
+
+	// the only two things that alert monsters when invisible besides damage:
+	// - firing a weapon
+	// - bumping into a dog
+	if (has_invis(client))
+	{
+		if (!(r == RANGE_MELEE && self.classname == "monster_dog" && client.classname == "player"))
+		{
+			if (client.show_hostile < time)
+				return FALSE;
+			if (r == RANGE_FAR)
+				return FALSE;
+		}
+	}
+
+	// got one
+	self.enemy = client;
+	if (self.enemy.classname != "player")
+	{
+		self.enemy = self.enemy.enemy;	// angered by a monster angering, use its enemy
+		if (self.enemy.classname != "player")
+		{
+			self.enemy = world;
+			return FALSE;
+		}
+	}
+	//truckmod just this check
+	if (self.enemy.flags & FL_VEHICLE) {
+		local entity truck = self.enemy.owner;
+		local entity gunner = truck.turret;
+		if !(gunner.enemy) {
+			gunner.enemy = self;
+			dprint("findtarget force turret e\n");}
+		self.enemy = truck.driver; //target the fake player
+		if !(alive(self.enemy)) {
+			dprint("findtarget dead driver\n");
+			return FALSE;}
+		dprint("FL_VEHICLE FindTarget FoundTarget\n");
+	}
+	FoundTarget();
+
+	return TRUE;
+}

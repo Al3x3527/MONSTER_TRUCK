@@ -6,7 +6,13 @@ Monster_Truck
 ============================================================
 known bugs:
 * chance of elevator freakout, especially going up
-X chance of camera freakout when gunner has an enemy (that is dead?)
+X chance of camera freakout when gunner has an enemy
+	X that is dead
+	/ partially blocked by a wall 
+	X findtarget force enemy loop
+	/ shooting unsuspecting monster
+	X when player can see monster around corner
+		>should not be using aim() for this
 * truck pulls to the left when low grip or in air
 * stairstep accelerates up, even when coasting
 * truck fix doesn't work on edges of platforms
@@ -14,6 +20,8 @@ X ai can't find each other sometimes
 * truck clips too much into walls causing freakouts on elevators
 * truck crabs a little when steering at a small angle
 * truck sinks partially into elevator going down sometimes
+* driving off edges sucks (boost helps)
+	>raising bottom of monster_truck bbox helped
 
 uniplemented ideas:
 * a way for the truck and player to take damage (truck health as armor value?)
@@ -25,6 +33,7 @@ uniplemented ideas:
 * truck damage states
 * truck death animations/explosions
 * player use of other "seats"
+* velocity based splatter damage
 */
 
 //forwards
@@ -87,97 +96,6 @@ void(float relative) cpywalk =
 	self.velocity = delta * 10;
 };
 
-//limit x,y,(z)
-vector(vector given, vector limit) vlimit =
-{
-		if !(limit)
-			return limit;
-		if !(given)
-			return given;
-
-		if (limit.x > 0) {
-			if (limit.x < given.x)
-				given.x = limit.x;
-			else if (given.x < -limit.x)
-				given.x = -limit.x;
-				} else if (limit.x > given.x)
-			given.x = limit.x;
-		else if (limit.x > -given.x)
-			given.x = -limit.x;
-
-		if (limit.y > 0) {
-			if (limit.y < given.y)
-				given.y = limit.y;
-			else if (given.y < -limit.y)
-				given.y = -limit.y;
-		} else if (limit.y > given.y)
-				given.y = limit.y;
-		else if (limit.y > -given.y)
-			given.y = -limit.y;
-
-		if (limit.z > 0) {
-			if (limit.z < given.z)
-				given.z = limit.z;
-			else if (given.z < -limit.z)
-				given.z = -limit.z;
-		} else if (limit.z > given.z)
-			given.z = limit.z;
-		else if (limit.z > -given.z)
-			given.z = -limit.z;
-			return given;
-}
-
-//vector control x,y, (z)
-vector(vector set, vector sys, float k) vcontrol =
-{
-	set.z = 0;
-	if !(set)
-		return set;
-	if !(sys)
-		return set;
-
-	if (set.x > 0) {
-		if (set.x < sys.x) {
-			if (set.x < (sys.x - set.x))
-				set.x = ((set.x - sys.x) * k) - set.x;
-			else set.x = ((sys.x - set.x) - sys.x) * k + (set.x - sys.x);
-		}
-	} else {
-		if (set.x > sys.x) {
-			if (set.x > (sys.x - set.x))
-				set.x = ((set.x - sys.x) * k) - set.x;
-			else set.x = ((sys.x - set.x) - sys.x) * k + (set.x - sys.x);
-		}
-	}
-	if (set.y > 0) {
-		if (set.y < sys.y) {
-			if (set.y < (sys.y - set.y))
-				set.y = ((set.y - sys.y) * k) - set.y;
-			else set.y = ((sys.y - set.y) - sys.y) * k + (set.y - sys.y);
-		}
-	} else {
-		if (set.y > sys.y) {
-			if (set.y > (sys.y - set.y))
-				set.y = ((set.y - sys.y) * k) - set.y;
-			else set.y = ((sys.y - set.y) - sys.y) * k + (set.y - sys.y);
-		}
-	}
-	if (set.z > 0) {
-		if (set.z < sys.z) {
-			if (set.z < (sys.z - set.z))
-				set.z = ((set.z - sys.z) * k) - set.z;
-			else set.z = ((sys.z - set.z) - sys.z) * k + (set.z - sys.z);
-		}
-	} else {
-		if (set.z > sys.z) {
-			if (set.z > (sys.z - set.z))
-				set.z = ((set.z - sys.z) * k) - set.z;
-			else set.z = ((sys.z - set.z) - sys.z) * k + (set.z - sys.z);
-		}
-	}
-	return set;
-}
-
 //vector control damping
 //call makevectors() first
 vector(vector delta) vdamping =
@@ -190,44 +108,16 @@ vector(vector delta) vdamping =
 		return sys * 0.1 * c;
 	if !(sys)
 		return sys;
-if (sys.x){
-	if (sys.x > 0) {
-		if (sys.x > set.x)
-			sys.x = sys.x - (sys.x - set.x) * c;
-		else 
-			sys.x = sys.x * c;
-	} else {
-		if (sys.x < -set.x) //full
-			sys.x = sys.x + (sys.x + set.x) * c;
-		else
-			sys.x = sys.x * c;
+	local float speed = normalize(sys) * v_up; //positive or negative
+	//dprint(ftos(speed)); dprint("speed\n");
+	if (vlen(sys) > deflection)
+		sys -= set * c * speed;
+	else {
+	sys *= c; 
 	}
-}
-if (sys.y) {
-	if (sys.y > 0) {
-		if (sys.y > set.y)
-			sys.y = sys.y - (sys.y - set.y) * c;
-		else
-			sys.y = sys.y * c;
-	} else {
-		if (sys.y < -set.y)
-			sys.y = sys.y + (sys.y + set.y) * c;
-		else
-			sys.y = sys.y * c;
-	}
-}
-	if (sys.z > 0) {
-		if (sys.z > set.z)
-			sys.z = sys.z - (sys.z - set.z) * c;
-		else
-			sys.z = sys.z * c;
-	} else {
-		if (sys.z < -set.z)
-			sys.z = sys.z + (sys.z + set.z) * c;
-		else
-			sys.z = sys.z * c;
-	}
-	sys = sys * 0.1;
+	//dprint(vtos(delta)); dprint("delta");
+	//dprint(vtos(sys)); dprint("sys\n");
+	sys *= 0.1;
 	return sys;
 };
 
@@ -244,6 +134,77 @@ vector (vector vec) up =
 	return vec;
 }
 
+//grip control x,y,z
+vector(vector work, vector tvec, vector dir, float mu) grip_control =
+{
+	local float speed;
+	local vector grip;
+	local vector lateral;
+	if !(dir) dir = v_forward;
+	dir_z = 0;
+	//dprint(vtos(dir)); dprint(" dir\n");
+if (work) {
+		lateral = normalize(notup('1 1 1' - dir));
+	dprint(vtos(tvec)); dprint(" fake tvec\n");
+	dprint(vtos(work)); dprint(" starting work\n");
+	if (mu < 0)
+		grip = '0 0 0';
+	else {//test full work against grip (lengths)
+	grip = dir * mu; //vlen(grip) = vup
+	work = work - tvec; //only difference no runaway
+	speed = vlen(work);
+	}
+	//dprint(ftos(speed)); dprint("speed\n");
+	//dprint(vtos(grip)); dprint("starting grip"); dprint(ftos(mu)); dprint("mu\n");
+	if (mu > speed) {//if grip was greater, grip -= work; grip *= -1
+		grip -= work;//find difference between full work and grip
+		//dprint("enough grip\n");
+		} else {//if work was greater, work = vlen(grip) * normalize(work)
+		//dprint("not enough grip\n");
+		work = grip; //work and grip same direction
+		grip = '0 0 0';//; grip = 0
+		}
+	//dprint(vtos(grip)); dprint("remaining grip\n");
+	dprint(vtos(work)); dprint("work after full grip\n");
+	if !(grip) mu = 0; //tire uses the rest of grip against tvec,n
+	else mu = vlen(grip); //do rolling grip first
+
+	speed = tvec * dir;//need to have resistance to rolling
+	speed -= work * dir; //negative speed means work exceedes velocity
+	//dprint(ftos(mu)); dprint(" mu\n");
+	//dprint(ftos(speed)); dprint(" speed\n"); //how much to lose/resist
+	if (speed > 0) {
+	if (mu > speed) {
+		work -= speed * dir; //diff between tvec & work in dir
+		mu -= speed;
+	} else {//not enough grip left
+		work -= mu * dir; //not interested in anything else
+		mu = 0;
+	}
+	//dprint(vtos(mu * dir)); dprint("remaining grip ar\n");
+	dprint(vtos(work)); dprint("work after rolling\n");
+}
+	else {
+		lateral = v_right;
+	}
+	if (mu) //sliding resistance
+	{
+		grip = lateral;
+		speed = tvec * grip; //lateral speed
+		//dprint(ftos(mu)); dprint("mu lat");
+		//dprint(ftos(speed)); dprint(" lat speed\n");
+		//dprint(vtos(lateral)); dprint("lateral\n");
+		if (mu > speed) {
+			work -= speed * grip; //negate lateral
+		} else work -= mu * grip;
+	} //vectors, dir, vec, tvec, work in; work out
+	}
+	//dprint(vtos(mu * grip)); dprint("lateral grip\n");
+	//dprint(vtos(work)); dprint("work after lateral\n");
+	dprint(vtos(work + tvec)); dprint("final vel\n");
+	return work;
+}
+
 //calculate vehicle_truck velocity and avelocity from wheels
 float (float dist, vector dir) truck_physics =
 {
@@ -257,12 +218,13 @@ float (float dist, vector dir) truck_physics =
 	//truck vectors - velocity from wheels vs gravity, est grip
 	local vector svec = truck.velocity;
 	local vector avec = truck.avelocity;
+	dprint(vtos(avec)); dprint("true avec\n");
 	local vector tvec = svec * 0.025;
 	local float throttle = 1;
 	local float fakedist = dist;
 	if !(dist) {
 		throttle = -1;
-		fakedist = vlen(tvec)/2;
+		//fakedist = vlen(tvec)/2;
 		}
 
 	local vector fakeangles = truck.angles;
@@ -271,52 +233,105 @@ float (float dist, vector dir) truck_physics =
 
 	local float steer_yaw = vectoyaw(dir);
 	dir.z = 0;
+
+	//animate
+	local float start_yaw = truck.angles.y;
+	local float dang;
+	local float direction;
+	dang = -steer_yaw + start_yaw;
+	if (dang > 180) dang += -360;
+	else if (dang < -180) dang += 360;
+	if ((dang > 15) && (dang < 165))
+		direction = 1; //right
+	else if ((dang < -15) && (dang > -165))
+		direction = -1; //left
+
+	local float reverse = -1;
+	//dang = steer_yaw - chassis_yaw;
+	if (dang > 180) dang = -360 + dang;
+	else if (dang < -180) dang = 360 + dang;
+	if ((dang > 90) || (dang < -90)) {
+		//chassis_yaw = chassis_yaw - 180;
+		reverse = 1;
+	}
+	direction *= -reverse;
+
 	//=================================================================
 	//front wheels work against momentum
 	//=================================================================
-	   
+
+//differential stuff - front
+
+	local float diff = truck.wheel1.view_ofs.y * sin(90 - dang);
+	local float fakediff = 0;
+	local float dist1 = fakedist + diff * -direction; //differential effect
+	if (dist1 < 0) {
+		fakediff = -dist1;
+		dist1 = 0;
+		}
+	else if (dist1 > fakedist) dist1 = fakedist;
+
+	local float dist2 = fakedist + diff * direction + fakediff;
+	if (dist2 < 0) {
+		dist1 -= dist2;//left on the table
+		dist2 = 0;
+	} else if (dist2 > fakedist) dist2 = fakedist;
 	//ideal work against momentum
 	//front wheels
 	self = truck.wheel1; //virtual
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
 	local vector view = self.view_ofs;
+	
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin; //start from the resting position
 	local vector delta = self.origin - view;
-	local vector fakeview = delta * v_up * v_up;
-	setorigin (self, view + fakeview);  //make reset after finding delta
-	walkmove(steer_yaw, fakedist); //movetype_step physics
-	vec1 = notup(self.origin - view); //get to current position from start position
+	local vector fakeview = delta * v_up * v_up + view;
+	setorigin (self, fakeview);  //make reset after finding delta
+	walkmove(steer_yaw, dist1); //movetype_step physics
+	vec1 = notup(self.origin - fakeview); //get to current position from start position
 	local vector work1 = vec1;
+	delta -= 10 * tvec;
 	vec1 = vec1 + vdamping(delta);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
 	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
 	if (trace_ent != world) {
 		self.velocity = trace_ent.velocity; //not discrete
 		vec1 += trace_ent.velocity * 0.1;
-		dprint(vtos(trace_ent.velocity));
-		dprint(trace_ent.classname);
-		dprint(" trace_ent1\n");}
+		}
+	//dprint(ftos(fakedist)); dprint(" fakedist ");
+	//dprint(ftos(dist1)); dprint(" truedist\n");
+	//dprint(vtos(work1)); dprint("work1\n");
+	view -= truck.origin;
+
+	local vector tvec1 = svec
+	+ avec.y * 0.628 / 360 * (view_x * v_right + view_y * v_forward)
+	- avec.x * 0.628 / 360 * (view_x * v_up - view_z * v_forward)
+	- avec.z * 0.628 / 360 * (view_y * v_up + view_z * v_right);
+	tvec1 *= 0.025;
 
 	self = truck.wheel2;
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
 	view = self.view_ofs;
+	
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin;
 	delta = self.origin - view;
-	fakeview = up(delta);
-	setorigin(self, view + fakeview);
-	walkmove(steer_yaw, fakedist);
-	vec2 = notup(self.origin - view);
+	fakeview = up(delta) + view;
+	setorigin(self, fakeview);
+	walkmove(steer_yaw, dist2);
+	vec2 = notup(self.origin - fakeview);
 	local vector work2 = vec2;
+	delta -= 10 * tvec;
 	vec2 += vdamping(delta);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
 	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
 	if (trace_ent != world) {
 		self.velocity = trace_ent.velocity;
 		vec2 += trace_ent.velocity * 0.1;
-		dprint(vtos(trace_ent.velocity));
-		dprint(trace_ent.classname);
-		dprint(" trace_ent2\n");
 	}
+	local vector tvec2 = svec
+		+ avec.y * 0.628 / 360 * (view_x * v_right + view_y * v_forward)
+		- avec.x * 0.628 / 360 * (view_x * v_up - view_z * v_forward)
+		- avec.z * 0.628 / 360 * (view_y * v_up + view_z * v_right);
+		tvec2 *= 0.025;
 
 	//=================================================================
 	//change in rear wheels velocity
@@ -325,59 +340,76 @@ float (float dist, vector dir) truck_physics =
 	local vector pivot = (truck.wheel1.origin + truck.wheel2.origin) * 0.5;
 	pivot.z = pivot.z - truck.wheel1.view_ofs.z; //level with vehicle
 	local vector chassis_vec = pivot - truck.origin; //delta (forward vec)
-	local float chassis_yaw = vectoyaw(chassis_vec); //new truck yaw
-
-	local float dang;
-	local float reverse = -1;
-	dang = steer_yaw - chassis_yaw;
+	local float chassis_yaw = vectoyaw(chassis_vec * -reverse); //new truck yaw
+	//local float chassis_yaw = fakeangles.y;
+	dang = -chassis_yaw + start_yaw;
 	if (dang > 180) dang = -360 + dang;
 	else if (dang < -180) dang = 360 + dang;
-	if ((dang > 90) || (dang < -90)) {
-		chassis_yaw = chassis_yaw - 180;
-		reverse = 1;}
+	diff = truck.wheel1.view_ofs.y * sin(90 - dang);
+
+	fakediff = 0;
+	local float dist3 = fakedist + diff * direction;
+	if (dist3 < 0) {
+		fakediff = -dist3;
+		dist3 = 0;
+	} else if (dist3 > fakedist) dist3 = fakedist;
+
+	local float dist4 = fakedist + diff * -direction + fakediff;
+	if (dist4 < 0) {
+		dist3 -= dist4;
+		dist4 = 0;
+	} else if (dist4 > fakedist) dist4 = fakedist;
 
 	//rear wheels
 	self = truck.wheel3;
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
 	view = self.view_ofs;
+	
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin;
 	delta = self.origin - view;
-	fakeview = up(delta);
-	setorigin(self, view + fakeview);
-	walkmove(chassis_yaw, fakedist); //move from view
-	vec3 = notup(self.origin - view); //movestep delta
+	fakeview = up(delta) + view;
+	setorigin(self, fakeview);
+	walkmove(chassis_yaw, dist3); //move from view
+	vec3 = notup(self.origin - fakeview); //movestep delta
 	local vector work3 = vec3;
+	delta -= 10 * tvec;
 	vec3 += vdamping(delta);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
 	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
 	if (trace_ent != world) {
 		self.velocity = trace_ent.velocity;
 		vec3 += trace_ent.velocity * 0.1;
-		dprint(vtos(trace_ent.velocity));
-		dprint(trace_ent.classname);
-		dprint(" trace_ent3\n");
 	}
+	local vector tvec3 = svec
+		+ avec.y * 0.628 / 360 * (view_x * v_right + view_y * v_forward)
+		- avec.x * 0.628 / 360 * (view_x * v_up - view_z * v_forward)
+		- avec.z * 0.628 / 360 * (view_y * v_up + view_z * v_right);
+	tvec3 *= 0.025;
 
 	self = truck.wheel4;
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
 	view = self.view_ofs;
+	
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin;
 	delta = self.origin - view;
-	fakeview = up(delta);
-	setorigin(self, view + fakeview);
-	walkmove(chassis_yaw, fakedist);
-	vec4 = notup(self.origin - view);
+	fakeview = up(delta) + view;
+	setorigin(self, fakeview);
+	walkmove(chassis_yaw, dist4);
+	vec4 = notup(self.origin - fakeview);
 	local vector work4 = vec4;
+	delta -= 10 * tvec;
 	vec4 += vdamping(delta);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
 	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
 	if (trace_ent != world) {
 		self.velocity = trace_ent.velocity;
 		vec4 += trace_ent.velocity * 0.1;
-		dprint(vtos(trace_ent.velocity));
-		dprint(trace_ent.classname);
-		dprint(" trace_ent4\n");
 	}
+	local vector tvec4 = svec
+		+ avec.y * 0.628 / 360 * (view_x * v_right + view_y * v_forward)
+		- avec.x * 0.628 / 360 * (view_x * v_up - view_z * v_forward)
+		- avec.z * 0.628 / 360 * (view_y * v_up + view_z * v_right);
+	tvec4 *= 0.025;
 
 	//Collider Tracelines
 	chassis_vec = normalize(chassis_vec);
@@ -390,82 +422,36 @@ float (float dist, vector dir) truck_physics =
 	//=================================================================
 	//vehicle forces, target vector
 	//=================================================================
-	//all fake wheels are in ideal locations and ideal velocities have been calculated for each wheel
 
-	//grip
-	local float fgrip;
-	local float rgrip = 0.6;
-	local float sgrip = 0.5;
-
-	if (dist)
-		fgrip = dist;
-	else fgrip = rgrip;
+	dprint(vtos(tvec)); dprint("true tvec\n");
 	
-	local vector grip1, grip2, grip3, grip4;
-	grip1 = normalize(work1) * fgrip + v_right * rgrip;
-	grip2 = normalize(work2) * fgrip + v_right * rgrip;
-	grip3 = normalize(work3) * fgrip + v_right * rgrip;
-	grip4 = normalize(work4) * fgrip + v_right * rgrip;
+	local float vup = -vec1 * v_up + 3;
+	work1 = grip_control(work1, tvec, dir, vup);
 
-	local float vup = vec1 * v_up;
-	local vector tup = up(-tvec);
+	vup = -vec2 * v_up + 3;
+	work2 = grip_control(work2, tvec, dir, vup);
+	vup = -vec3 * v_up + 3;
+	work3 = grip_control('0 0 0', tvec, chassis_vec, vup);
+	vup = -vec4 * v_up + 3;
+	work4 = grip_control('0 0 0', tvec, chassis_vec, vup);
 
-	if (vup < -3)
-		grip1 = '0 0 0';
-	else {
-		grip1 = (3 - vup) * grip1; //mu*m*svec1.z^2
-		vec1 += tup;
-		}
-	vup = vec2 * v_up;
-	if (vup < -3)
-		grip2 = '0 0 0';
-	else {
-		grip2 = (3 - vup) * grip2;
-		vec2 += tup;
-		}
-	vup = vec3 * v_up;
-	if (vup < -3)
-		grip3 = '0 0 0';
-	else {
-		grip3 = (3 - vup) * grip3;
-		vec3 += tup;
-		}
-	vup = vec4 * v_up;
-	if (vup < -3)
-		grip4 = '0 0 0';
-	else {
-		grip4 = (3 - vup) * grip4;
-		vec4 += tup;
-		}
-	
 	tvec = notup(tvec);
-	
-	work1 = vlimit(work1, grip1) * throttle;
-	local vector control1 = vcontrol(work1, tvec, sgrip);
 	work1 += up(vec1);
 	truck.wheel1.flyhack = work1;
-	control1 = control1 + work1;
 
-	work2 = vlimit(work2, grip2) * throttle;
-	local vector control2 = vcontrol(work2, tvec, sgrip);
 	work2 += up(vec2);
 	truck.wheel2.flyhack = work2;
-	control2 = control2 + work2;
 
-	work3 = vlimit(work3, grip3) * throttle;
-	local vector control3 = vcontrol(work3, tvec, sgrip);
 	work3 += up(vec3);
 	truck.wheel3.flyhack = work3;
-	control3 = control3 + work3;
 
-	work4 = vlimit(work4, grip4) * throttle;
-	local vector control4 = vcontrol(work4, tvec, sgrip);
 	work4 += up(vec4);
 	truck.wheel4.flyhack = work4;
-	control4 = control4 + work4;
+local vector work = work1 + work2 + work3 + work4;
+dprint(vtos(work)); dprint("total work\n");
 
 	//actual travel
-	svec = (svec + ((control1 + control2 + control3 + control4) * 10));
+	svec = (svec + (work * 10));
 	if (vec5)
 		svec = notup(svec) + vec5;
 
@@ -476,6 +462,12 @@ float (float dist, vector dir) truck_physics =
 	if (dang > 180) dang = -360 + dang;
 	else if (dang < -180) dang = 360 + dang;
 	avec.x = ((dang) * 1);
+
+	local vector offsets = truck.wheel1.view_ofs;
+	final_vec = (work1 + work2) * v_right * v_right + offsets_x * v_forward;
+	final_vec -= (work3 + work4) * v_right * v_right - offsets_x * v_forward;
+	final_vec += (work2 + work4) * v_forward * v_forward + offsets_y * v_right;
+	final_vec -= (work1 +  work3) * v_forward * v_forward - offsets_y * v_right;
 
 	dang = (final_angs.y - truck.angles.y);
 	if (dang > 180) dang = -360 + dang;
@@ -491,7 +483,6 @@ float (float dist, vector dir) truck_physics =
 	else if (dang < -180) dang = 360 + dang;
 	avec.z = ((dang) * 1);
 
-	local float start_yaw = truck.angles.y;
 	//dprint("\n");
 	//dprint(vtos(dir));
 	//dprint(" dir\n");
@@ -541,17 +532,7 @@ float (float dist, vector dir) truck_physics =
 	self = truck;
 	ChangeYaw();
 
-	//animate
-	local float direction;
-	dang = -steer_yaw + start_yaw;
-	if (dang > 180) dang += -360;
-	else if (dang < -180) dang += 360;
-	if ((dang > 15) && (dang < 165))
-		direction = 1; //right
-	else if ((dang < -15) && (dang > -165))
-		direction = -1; //left
-	//else 0;
-	direction *= -reverse;
+	
 	return direction;
 };
 
@@ -602,7 +583,7 @@ void(vector look, vector offset) camera_orbit =
 	self.avelocity = (dang * 10 * 4 + self.avelocity) / 5;
 
 	if (dist > (offset.z - offset.x)) {
-		view = look * -40;
+		view = look * -20;
 		view.z += 40;
 		setorigin(self, truck.origin + view);
 		self.velocity = truck.velocity;
@@ -721,6 +702,10 @@ vector () truck_pilot =
 {
 	local entity truck = self;
 	self = other;
+	if (self.classname != "player") {
+		dprint("pilot not player");
+		return '0 0 0';
+	}
 
 if !(self.driver.health) {
 	self.modelindex = 0;
@@ -735,7 +720,8 @@ if !(self.driver.health) {
 	sprint(self, "\nPress 1 to Dismount\nPress 2 to Jump\nPress 3 to Boost\nPress 4 to Reset\n");
 	}
 	self.weaponmodel = string_null;
-	local vector look = aim(world, 1000);
+	makevectors(self.v_angle);
+	local vector look = v_forward;
 	local vector offset = '-100 0 30';
 	camera_orbit(look, offset);
 	truck_ImpulseCommands();
@@ -749,7 +735,7 @@ void() truck_drive = [ $forward1, truck_drive ]
 	if (self.driver) {
 		other = self.driver;
 		if (other.button2)
-			dist = 2;
+			dist = 4;
 		local vector dir = truck_pilot();
 	}	//chassis physics / prethink
 	local float direction = truck_physics(dist, dir);
@@ -951,36 +937,39 @@ void() gunner_find_enemy =
 
 	m = nextent(world);
 	while (self.enemy == world) {
-	if ((m.flags & FL_MONSTER)
-	&& alive(m)
-	&& (visible(m))
-	&& (range(m) < 3)) {
-	self.enemy = m;
-	dprint("new gunner enemy\n");}
-
-	m = nextent(m);
-	if (m == world)
-		return;
-	}
+		if (self.classname != "truck_gunner") { dprint(self.classname); dprint("\n"); }
+		if ((m.flags & FL_MONSTER)
+		&& (m != self.owner)
+		&& alive(m)
+		&& (visible(m))
+		&& (range(m) < 3)) {
+			self.enemy = m;
+			dprint("new gunner enemy\n");
+			}
+		m = nextent(m);
+		if (m == world)
+			return;
+		}
 }
 
 void() gunner_choose_yaw =
 {
-	local entity pilot = self.owner.driver;
-
+	local entity truck = self.owner;
 	enemy_vis = visible(self.enemy);
 	enemy_range = range(self.enemy);
 
 	if (alive(self.enemy) && enemy_vis && (enemy_range < 4)) {
-		self.ideal_yaw = enemy_yaw();
+		//self.ideal_yaw = enemy_yaw();
+		self.ideal_yaw = vectoyaw(self.enemy.origin - self.origin);
 	} else {
+	local entity pilot = truck.driver;
 	self.ideal_yaw = pilot.v_angle.y;
 	self.enemy = world;
 	gunner_find_enemy();
 	self.think = gunner_turret_atk1;
 	}
-
-	self.v_angle.y = self.ideal_yaw - self.owner.angles.y;
+	if (self.classname != "truck_gunner") { dprint(self.classname); dprint("\n"); }
+	self.v_angle_y = self.ideal_yaw - truck.angles_y;
 	ChangeYaw();
 }
 
@@ -994,15 +983,17 @@ void() gunner_check_atk =
 	dprint("gca e not alive\n");
 	return;}
 		
-	if (enemy_range > 3) {
-		dprint("gca e out of range\n");
+	if (enemy_range > 2) {
+	//|| !(enemy_vis)) already checked in choose_yaw()
+		dprint("gca e out of range\n"); //don't actually engage too far (because glitches)
 		return;}
-
+	if (self.classname != "truck_gunner") {dprint(self.classname); dprint("\n");}
 	self.angles = vectoangles(self.enemy.origin - self.origin);
+
 	//dprint("gca angles set\n"); np
 	if (pilot.weapon == IT_SHOTGUN)
 	{
-		dprint("gunner shot called\n");
+		//dprint("gunner shot called\n");
 		gunner_shot1();
 		W_FireShotgun1();
 	} else if (pilot.weapon == IT_SUPER_SHOTGUN)
@@ -1049,6 +1040,7 @@ void() spawn_truck_gunner =
 
 	truck.turret = gunner;
 	gunner.owner = truck;
+	self.classname = "truck_gunner";
 	setmodel(self, "progs/player.mdl");
 	setsize(self, '-10 -10 0', '10 10 30');
 	self.view_ofs = '-35 0 25';
@@ -1160,7 +1152,7 @@ void() spawn_monster_truck =
 	self.movetype = MOVETYPE_FLY;
 	self.flags = FL_VEHICLE + FL_MONSTER;
 	setmodel(self, "progs/mini_truck.mdl");
-	setsize(self, '-8 -8 20', '8 8 36');
+	setsize(self, '-8 -8 28', '8 8 36');
 	self.classname = "monster_truck";
 	self.angles.y = self.angles.y;
 

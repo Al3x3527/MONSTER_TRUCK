@@ -1472,78 +1472,7 @@ PlayerPreThink
 Called every frame before physics are run
 ================
 */
-void() PlayerPreThink =
-{
-	if (initCleanup)
-	{
-		fog_setFromEnt( self, self );
-		if ( !( self.customflags & (CFL_PLUNGE|CFL_LIMBO) ) )
-		{
-			TintScreen(self, 0);
-		}
-		else if ( self.customflags & CFL_LIMBO )
-		{
-			TintScreen(self, 255);
-		}
-	}
-
-	if (intermission || self.deadflag == DEAD_SPECTATING )
-	{
-		IntermissionThink ();	// otherwise a button could be missed between
-		return;					// the think tics
-	}
-	makevectors (self.v_angle);		// is this still used
-									// lunaran: "yes"
-
-	CheckRules();
-
-	if (self.deadflag >= DEAD_DEAD)
-	{
-		PlayerDeathThink ();
-		return;
-	}
-	
-	if (self.deadflag == DEAD_DYING)
-		return;	// dying, so do nothing
-
-	self.wait = 0;
-	
-	PlayerWaterTest();
-	WaterMove();
-	if (self.waterlevel == WL_WAIST)
-		CheckWaterJump ();
-	if !(self.flags & FL_VEHICLE) {
-		if (self.button2)
-		{
-			PlayerJump ();
-		}
-		else
-		{
-			self.flags = self.flags | FL_JUMPRELEASED;
-		}
-	}
-	
-// teleporters can force a non-moving pause time	
-	if (time < self.pausetime)
-		self.velocity = '0 0 0';
-
-	if(time > self.attack_finished && 
-		!W_HasAmmo(self.weapon) && 
-		self.weapon != IT_AXE
-		)
-	{
-		W_SelectBestWeapon();
-	}
-
-	if (self.movetype == MOVETYPE_NOCLIP)
-	{
-		self.flags = self.flags | FL_FLY;
-	}
-	
-	// ai_nav
-	//nav_editorThink();
-}
-	
+void() PlayerPreThink = {SUB_PlayerPreThink();}
 
 /*
 ================
