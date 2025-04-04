@@ -309,7 +309,7 @@ float (float dist, vector dir) truck_physics =
 	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
 	if (trace_ent != world) {
 		self.velocity = trace_ent.velocity; //not discrete
-		vec1 += trace_ent.velocity * 0.1;
+		vec1 -= trace_ent.velocity * 0.1;
 		}
 	view -= truck.origin;
 
@@ -336,7 +336,7 @@ float (float dist, vector dir) truck_physics =
 	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
 	if (trace_ent != world) {
 		self.velocity = trace_ent.velocity;
-		vec2 += trace_ent.velocity * 0.1;
+		vec2 -= trace_ent.velocity * 0.1;
 	}
 	local vector tvec2 = svec
 		+ avec.y * 0.628 / 360 * (view_x * v_right + view_y * v_forward)
@@ -391,7 +391,7 @@ float (float dist, vector dir) truck_physics =
 	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
 	if (trace_ent != world) {
 		self.velocity = trace_ent.velocity;
-		vec3 += trace_ent.velocity * 0.1;
+		vec3 -= trace_ent.velocity * 0.1;
 	}
 	local vector tvec3 = svec
 		+ avec.y * 0.628 / 360 * (view_x * v_right + view_y * v_forward)
@@ -416,7 +416,7 @@ float (float dist, vector dir) truck_physics =
 	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
 	if (trace_ent != world) {
 		self.velocity = trace_ent.velocity;
-		vec4 += trace_ent.velocity * 0.1;
+		vec4 -= trace_ent.velocity * 0.1;
 	}
 	local vector tvec4 = svec
 		+ avec.y * 0.628 / 360 * (view_x * v_right + view_y * v_forward)
