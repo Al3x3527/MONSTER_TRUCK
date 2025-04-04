@@ -167,9 +167,9 @@ if (work) { //powered wheels should work against dir in decel (dir backwards)
 	//dprint(vtos(grip)); dprint("starting grip"); dprint(ftos(mu)); dprint("mu\n");
 	if (mu > speed) {
 		grip -= work;//find difference between full work and grip
-		dprint("enough grip\n");
+		//dprint("enough grip\n");
 		} else {
-		dprint("not enough grip\n");
+		//dprint("not enough grip\n");
 		work = grip; //work and grip same direction
 		grip = '0 0 0';
 		}
@@ -442,15 +442,20 @@ float (float dist, vector dir) truck_physics =
 	//dprint(vtos(work2)); dprint("work2\n");
 	//dprint(vtos(work3)); dprint("work3\n");
 	//dprint(vtos(work4)); dprint("work4\n");
+
+	if !(throttle == -1) {
+		work3 = '0 0 0';
+		work4 = '0 0 0';
+	}
 	
 	local float vup = -vec1 * v_up + 3;
 	work1 = grip_control(work1, tvec, dir * throttle, vup);
 	vup = -vec2 * v_up + 3;
 	work2 = grip_control(work2, tvec, dir * throttle, vup);
 	vup = -vec3 * v_up + 3;
-	work3 = grip_control('0 0 0', tvec, chassis_vec, vup);
+	work3 = grip_control(work3, tvec, chassis_vec, vup);
 	vup = -vec4 * v_up + 3;
-	work4 = grip_control('0 0 0', tvec, chassis_vec, vup);
+	work4 = grip_control(work4, tvec, chassis_vec, vup);
 
 	tvec = notup(tvec);
 	work1 += up(vec1);
