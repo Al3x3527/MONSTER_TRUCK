@@ -150,22 +150,27 @@ if (work) { //powered wheels should work against dir in decel (dir backwards)
 	if (mu < 0)
 		grip = '0 0 0';
 	else {//test full work against grip (lengths)
-	grip = dir * mu; 
-	speed = normalize(work) * dir; //modify by throttle
+	//grip = dir * mu; 
+	speed = normalize(work) * dir; //for coasting only
 	work = vlen(work) * dir;
-	if (speed < 0)
+	if (speed < 0) {
+		speed = normalize(tvec) * dir;
+		if (speed > 0)
+			work *= -1;
 		return work;
+		}
 	work -= tvec; //only difference no runaway
-	speed *= vlen(work);
+	speed = vlen(work);
+	grip = normalize(work) * mu;
 	}
 	//dprint(ftos(speed)); dprint("speed\n");
 	//dprint(vtos(grip)); dprint("starting grip"); dprint(ftos(mu)); dprint("mu\n");
 	if (mu > speed) {
 		grip -= work;//find difference between full work and grip
-		//dprint("enough grip\n");
+		dprint("enough grip\n");
 		} else {
-		//dprint("not enough grip\n");
-		work = mu * normalize(work); //work and grip same direction
+		dprint("not enough grip\n");
+		work = grip; //work and grip same direction
 		grip = '0 0 0';
 		}
 	//dprint(vtos(grip)); dprint("remaining grip\n");
@@ -225,7 +230,7 @@ float (float dist, vector dir) truck_physics =
 	//truck vectors - velocity from wheels vs gravity, est grip
 	local vector svec = truck.velocity;
 	local vector avec = truck.avelocity;
-	dprint(vtos(avec)); dprint("true avec\n");
+	//dprint(vtos(avec)); dprint("true avec\n");
 	local vector tvec = svec * 0.025;
 	local float throttle = 1;
 	local float fakedist = dist;
@@ -431,12 +436,12 @@ float (float dist, vector dir) truck_physics =
 	//vehicle forces, target vector
 	//=================================================================
 
-	dprint(vtos(dir)); dprint("dir\n");
-	dprint(vtos(tvec)); dprint("true tvec\n");
-	dprint(vtos(work1)); dprint("work1\n");
-	dprint(vtos(work2)); dprint("work2\n");
-	dprint(vtos(work3)); dprint("work3\n");
-	dprint(vtos(work4)); dprint("work4\n");
+	//dprint(vtos(dir)); dprint("dir\n");
+	//dprint(vtos(tvec)); dprint("true tvec\n");
+	//dprint(vtos(work1)); dprint("work1\n");
+	//dprint(vtos(work2)); dprint("work2\n");
+	//dprint(vtos(work3)); dprint("work3\n");
+	//dprint(vtos(work4)); dprint("work4\n");
 	
 	local float vup = -vec1 * v_up + 3;
 	work1 = grip_control(work1, tvec, dir * throttle, vup);
@@ -460,12 +465,12 @@ float (float dist, vector dir) truck_physics =
 	work4 += up(vec4);
 	truck.wheel4.flyhack = work4;
 
-	dprint(vtos(work1)); dprint("f work1\n");
-	dprint(vtos(work2)); dprint("f work2\n");
-	dprint(vtos(work3)); dprint("f work3\n");
-	dprint(vtos(work4)); dprint("f work4\n");
+	//dprint(vtos(work1)); dprint("f work1\n");
+	//dprint(vtos(work2)); dprint("f work2\n");
+	//dprint(vtos(work3)); dprint("f work3\n");
+	//dprint(vtos(work4)); dprint("f work4\n");
 local vector work = work1 + work2 + work3 + work4;
-dprint(vtos(work)); dprint("total work\n");
+//dprint(vtos(work)); dprint("total work\n");
 
 	//actual travel
 	svec = (svec + (work * 10));
