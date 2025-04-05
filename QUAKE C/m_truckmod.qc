@@ -140,75 +140,60 @@ vector(vector work, vector tvec, vector dir, float mu) grip_control =
 	local float speed;
 	local vector grip;
 	local vector lateral;
+	tvec = notup(tvec);
 	if !(dir) dir = v_forward;
+	local vector fakedir = dir;
+	if (work)
+		fakedir = normalize(work);
 	lateral_x = dir_y; lateral_y = -dir_x;
-	//lateral *= dir * normalize(tvec); not the problem
-	//dprint(vtos(dir)); dprint(" dir\n");
-if (work) { //powered wheels should work against dir in decel (dir backwards)
-	//dprint(vtos(tvec)); dprint(" fake tvec\n");
+	local float active = 0;
+	if (work) active = 1;
+	//dprint(vtos(tvec)); dprint("tvec==============\n");
+	//dprint(vtos(work)); dprint("work in"); dprint(ftos(mu)); dprint(" mu in\n");
+if (mu)
+{
+	//SETUP
 	//dprint(vtos(work)); dprint(" starting work\n");
-	if (mu < 0)
-		grip = '0 0 0';
-	else {//test full work against grip (lengths)
-	//grip = dir * mu; 
-	speed = normalize(work) * dir; //for coasting only
-	work = vlen(work) * dir;
+	if !(mu <= 0) {
+	speed = fakedir * dir; //for coasting only
 	if (speed < 0) {
 		speed = normalize(tvec) * dir;
-		if (speed > 0)
+		if (speed < 0) {
 			work *= -1;
-		return work;
+			}
+		active = 0;
 		}
-	work -= tvec; //only difference no runaway
-	speed = vlen(work);
-	grip = normalize(work) * mu;
-	}
-	//dprint(ftos(speed)); dprint("speed\n");
-	//dprint(vtos(grip)); dprint("starting grip"); dprint(ftos(mu)); dprint("mu\n");
-	if (mu > speed) {
-		grip -= work;//find difference between full work and grip
-		//dprint("enough grip\n");
-		} else {
-		//dprint("not enough grip\n");
-		work = grip; //work and grip same direction
-		grip = '0 0 0';
-		}
-	//dprint(vtos(grip)); dprint("remaining grip\n");
-	//dprint(vtos(work)); dprint("work after full grip\n");
-	if !(grip) mu = 0; //tire uses the rest of grip against tvec,n
-	else mu = vlen(grip); //do rolling grip first
 
-	speed = tvec * dir;//need to have resistance to rolling
-	speed -= work * dir; //negative speed means work exceedes velocity
-	//dprint(ftos(mu)); dprint(" mu\n");
-	//dprint(ftos(speed)); dprint(" speed\n"); //how much to lose/resist
-	if (speed > 0) {
+	//USE ALL GRIP TO RESIST TVEC
+	grip = -normalize(tvec);
+	speed = vlen(tvec);
 	if (mu > speed) {
-		work -= speed * dir; //diff between tvec & work in dir
-		mu -= speed;
-	} else {//not enough grip left
-		work -= mu * dir; //not interested in anything else
-		mu = 0;
+		grip = - tvec; //grip to be used
+	} else { 
+	grip = mu * grip;
 	}
-	//dprint(vtos(mu * dir)); dprint("remaining grip ar\n");
-	//dprint(vtos(work)); dprint("work after rolling\n");
+	//dprint(vtos(grip)); dprint("grip used tvec\n");
+
+	//RESTORE THE GRIP SPENT ALONG WORK VECTOR
+	speed = fakedir * grip; //grip used in dir of work
+	grip -= speed * fakedir; //grip used not in dir of work
+	work += grip; //tvec grip
+	//dprint(vtos(work)); dprint("work after lateral\n");
+	mu -= vlen(grip);
 	}
-	}
-	if (mu) //sliding resistance
-	{
-		grip = lateral;
-		speed = tvec * grip; //lateral speed
-		//dprint(ftos(mu)); dprint("mu lat");
-		//dprint(ftos(speed)); dprint(" lat speed\n");
-		//dprint(vtos(lateral)); dprint("lateral\n");
-		if (mu > speed) {
-			work -= speed * grip; //negate lateral
-		} else work -= mu * grip;
-	} //vectors, dir, vec, tvec, work in; work out
-	
-	//dprint(vtos(mu * grip)); dprint("lateral grip\n");
-	//dprint(vtos(work)); dprint("final work\n");
-	//dprint(vtos(work + tvec)); dprint("final vel\n");
+
+	if (active) { //powered wheels should work against dir in decel (dir backwards)
+	work -= tvec; //only difference no runaway
+	//dprint(vtos(work)); dprint("work after tvec"); dprint(ftos(mu)); dprint(" mu for full\n");
+	speed = vlen(work);
+	grip = normalize(work) * mu; //account for lateral
+
+	if !(grip) mu = 0;
+	else mu = vlen(grip);
+}
+}
+	grip = tvec + work;
+	//dprint(vtos(grip)); dprint("final vec\n");
 	return work;
 }
 //=================================================================
@@ -442,6 +427,8 @@ float (float dist, vector dir) truck_physics =
 	//dprint(vtos(work2)); dprint("work2\n");
 	//dprint(vtos(work3)); dprint("work3\n");
 	//dprint(vtos(work4)); dprint("work4\n");
+	if (vlen(work1) > fakedist) work1 = normalize(work1) * fakedist;
+	if (vlen(work2) > fakedist) work2 = normalize(work2) * fakedist;
 
 	if !(throttle == -1) {
 		work3 = '0 0 0';
