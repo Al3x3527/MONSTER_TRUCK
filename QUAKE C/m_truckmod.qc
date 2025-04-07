@@ -277,6 +277,7 @@ float (float dist, vector dir) truck_physics =
 	} else if (dist2 > fakedist) dist2 = fakedist;
 	//ideal work against momentum
 	//front wheels
+	local vector entvec;
 	self = truck.wheel1; //virtual
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
 	local vector view = self.view_ofs;
@@ -293,8 +294,9 @@ float (float dist, vector dir) truck_physics =
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
 	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
 	if (trace_ent != world) {
-		self.velocity = trace_ent.velocity; //not discrete
-		vec1 -= trace_ent.velocity * 0.1;
+		entvec = self.velocity = trace_ent.velocity;
+		if (entvec_z > 0) entvec_z *= -1;
+		vec1 += entvec * 0.1;
 		}
 	view -= truck.origin;
 
@@ -320,8 +322,9 @@ float (float dist, vector dir) truck_physics =
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
 	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
 	if (trace_ent != world) {
-		self.velocity = trace_ent.velocity;
-		vec2 -= trace_ent.velocity * 0.1;
+		entvec = self.velocity = trace_ent.velocity;
+		if (entvec_z > 0) entvec_z *= -1;
+		vec2 += entvec * 0.1;
 	}
 	local vector tvec2 = svec
 		+ avec.y * 0.628 / 360 * (view_x * v_right + view_y * v_forward)
@@ -375,8 +378,9 @@ float (float dist, vector dir) truck_physics =
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
 	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
 	if (trace_ent != world) {
-		self.velocity = trace_ent.velocity;
-		vec3 -= trace_ent.velocity * 0.1;
+		entvec = self.velocity = trace_ent.velocity;
+		if (entvec_z > 0) entvec_z *= -1;
+		vec3 += entvec * 0.1;
 	}
 	local vector tvec3 = svec
 		+ avec.y * 0.628 / 360 * (view_x * v_right + view_y * v_forward)
@@ -400,8 +404,9 @@ float (float dist, vector dir) truck_physics =
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
 	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
 	if (trace_ent != world) {
-		self.velocity = trace_ent.velocity;
-		vec4 -= trace_ent.velocity * 0.1;
+		entvec = self.velocity = trace_ent.velocity;
+		if (entvec_z > 0) entvec_z *= -1;
+		vec4 += entvec * 0.1;
 	}
 	local vector tvec4 = svec
 		+ avec.y * 0.628 / 360 * (view_x * v_right + view_y * v_forward)
@@ -413,9 +418,11 @@ float (float dist, vector dir) truck_physics =
 	chassis_vec = normalize(chassis_vec);
 	self = truck;
 	//check below for moving plat
-	traceline2(self.origin + '0 0 20', self.origin - '0 0 3', self, 1); //origin is below bbox
+	traceline2(self.origin + '0 0 20', self.origin - '0 0 6', self, 1); //origin is below bbox
+	local vector vec5;
 	if (trace_ent != world)
-		local vector vec5 = trace_ent.velocity; //touching ground velocity (as velocity)
+		vec5 = trace_ent.velocity; //touching ground velocity (as velocity)
+	if(vec5 != '0 0 0') {dprint(vtos(vec5)); dprint("vec5\n");}
 
 	//=================================================================
 	//vehicle forces, target vector
