@@ -101,7 +101,7 @@ void(float relative) cpywalk =
 vector(vector delta, vector tvec) vdamping =
 {
 	local float deflection = 3;
-	local float c = 0.6;
+	local float c = 0.8;
 	local vector sys = delta * v_up * v_up;
 	local vector set = deflection * v_up;
 	//dprint("damp start\n");
@@ -113,14 +113,14 @@ vector(vector delta, vector tvec) vdamping =
 	//dprint(ftos(speed)); dprint("speed\n");
 	if (vlen(sys) > deflection){
 	//FULL DEFELCTION: NO EFFECT FROM VELOCITY
-		sys -= set * (1-c) * speed;
+		//sys -= set * c * speed;
 		sys *= 0.1;
 		}
 	else {
 	//PARTIAL DEFLECTION
 	sys *= c * 0.1; 
-	if ((tvec * v_up) < (deflection * 10)) sys -= tvec * (1-c);
-	else sys -= set * 10 * (1-c);
+	if ((tvec * v_up) < (deflection * 10)) sys -= tvec * c;
+	else sys -= set * 10 * c;
 	}
 	//dprint("damp end\n");
 	//dprint(vtos(delta)); dprint("delta");
@@ -691,7 +691,7 @@ void() truck_boost =
 		return;
 	self.cnt = time + 0.5;
 	makevectors(self.owner.angles);
-	self.owner.velocity = self.owner.velocity + 500 * v_forward;
+	self.owner.velocity = self.owner.velocity + 200 * v_forward;
 }
 
 void() truck_fix = //add trigger truck fix to elevators?
