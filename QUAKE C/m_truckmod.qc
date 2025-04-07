@@ -98,26 +98,34 @@ void(float relative) cpywalk =
 
 //vector control damping
 //call makevectors() first
-vector(vector delta) vdamping =
+vector(vector delta, vector tvec) vdamping =
 {
 	local float deflection = 3;
 	local float c = 0.6;
 	local vector sys = delta * v_up * v_up;
 	local vector set = deflection * v_up;
+	//dprint("damp start\n");
 	if !(set)
 		return sys * 0.1 * c;
 	if !(sys)
 		return sys;
 	local float speed = normalize(sys) * v_up; //positive or negative
 	//dprint(ftos(speed)); dprint("speed\n");
-	if (vlen(sys) > deflection)
-		sys -= set * c * speed;
+	if (vlen(sys) > deflection){
+	//FULL DEFELCTION: NO EFFECT FROM VELOCITY
+		sys -= set * (1-c) * speed;
+		sys *= 0.1;
+		}
 	else {
-	sys *= c; 
+	//PARTIAL DEFLECTION
+	sys *= c * 0.1; 
+	if ((tvec * v_up) < (deflection * 10)) sys -= tvec * (1-c);
+	else sys -= set * 10 * (1-c);
 	}
+	//dprint("damp end\n");
 	//dprint(vtos(delta)); dprint("delta");
 	//dprint(vtos(sys)); dprint("sys\n");
-	sys *= 0.1;
+	//sys *= 0.1; //I don't get it
 	return sys;
 };
 
@@ -223,6 +231,8 @@ float (float dist, vector dir) truck_physics =
 		throttle = -1;
 		fakedist = vlen(tvec)/1.2;
 		}
+	local float damp2 = 0; //or we bounce forever
+	//if (tvec_z < 0) damp2 = 1; //what does changing this number really do?
 
 	local vector fakeangles = truck.angles;
 	fakeangles.x = -fakeangles.x;
@@ -244,11 +254,9 @@ float (float dist, vector dir) truck_physics =
 		direction = -1; //left
 
 	local float reverse = -1;
-	//dang = steer_yaw - chassis_yaw;
 	if (dang > 180) dang = -360 + dang;
 	else if (dang < -180) dang = 360 + dang;
 	if ((dang > 90) || (dang < -90)) {
-		//chassis_yaw = chassis_yaw - 180;
 		reverse = 1;
 	}
 	direction *= -reverse;
@@ -281,6 +289,11 @@ float (float dist, vector dir) truck_physics =
 	self = truck.wheel1; //virtual
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
 	local vector view = self.view_ofs;
+	self.velocity +=//= svec
+		avec.y * 0.628 / 360 * (view_x * v_right + view_y * v_forward)
+		- avec.x * 0.628 / 360 * (view_x * v_up - view_z * v_forward)
+		- avec.z * 0.628 / 360 * (view_y * v_up + view_z * v_right);
+	dprint(vtos(self.velocity)); dprint("wheel velocity\n");
 	
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin; //start from the resting position
 	local vector delta = self.origin - view;
@@ -289,27 +302,40 @@ float (float dist, vector dir) truck_physics =
 	walkmove(steer_yaw, dist1); //movetype_step physics
 	vec1 = notup(self.origin - fakeview); //get to current position from start position
 	local vector work1 = vec1;
-	delta -= 10 * tvec;
-	vec1 = vec1 + vdamping(delta);
+	//delta *= -1;
+	dprint(vtos(delta)); dprint("delta\n");
+	//delta -= damp2 * tvec;
+	//if (delta_z > 10) delta *= 0.1;
+	//dprint(vtos(delta)); dprint("mod delta\n");
+	delta = vdamping(delta, tvec);
+	dprint(vtos(delta)); dprint("damp delta\n");
+	vec1 += delta;
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
+	/*diff = dist1 - vlen(vec1);
+	if (diff > 0.1) { //was blocked, try fly
+	setorigin(self, self.origin + '0 0 1');
+	self.velocity = diff * dir * 10 - '0 0 40';
+	dprint(vtos(self.velocity)); dprint(ftos(diff)); dprint(" blocked, try fly\n");
+	}*/
+
 	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
 	if (trace_ent != world) {
-		entvec = self.velocity = trace_ent.velocity;
+		entvec = trace_ent.velocity;
 		if (entvec_z > 0) entvec_z *= -1;
 		vec1 += entvec * 0.1;
 		}
-	view -= truck.origin;
+	//self.flyhack = self.flyhack_z * '0 0 1';
+	//self.velocity += vec1 * 10;
 
-	local vector tvec1 = svec
-	+ avec.y * 0.628 / 360 * (view_x * v_right + view_y * v_forward)
-	- avec.x * 0.628 / 360 * (view_x * v_up - view_z * v_forward)
-	- avec.z * 0.628 / 360 * (view_y * v_up + view_z * v_right);
-	tvec1 *= 0.025;
+
 
 	self = truck.wheel2;
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
 	view = self.view_ofs;
-	
+	self.velocity +=// svec
+		avec.y * 0.628 / 360 * (view_x * v_right + view_y * v_forward)
+		- avec.x * 0.628 / 360 * (view_x * v_up - view_z * v_forward)
+		- avec.z * 0.628 / 360 * (view_y * v_up + view_z * v_right);
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin;
 	delta = self.origin - view;
 	fakeview = up(delta) + view;
@@ -317,20 +343,15 @@ float (float dist, vector dir) truck_physics =
 	walkmove(steer_yaw, dist2);
 	vec2 = notup(self.origin - fakeview);
 	local vector work2 = vec2;
-	delta -= 10 * tvec;
-	vec2 += vdamping(delta);
+	vec2 += vdamping(delta, tvec);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
-	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
+	traceline2(self.origin, self.origin - '0 0 8', self, 1);
 	if (trace_ent != world) {
-		entvec = self.velocity = trace_ent.velocity;
+		entvec = trace_ent.velocity;
 		if (entvec_z > 0) entvec_z *= -1;
 		vec2 += entvec * 0.1;
 	}
-	local vector tvec2 = svec
-		+ avec.y * 0.628 / 360 * (view_x * v_right + view_y * v_forward)
-		- avec.x * 0.628 / 360 * (view_x * v_up - view_z * v_forward)
-		- avec.z * 0.628 / 360 * (view_y * v_up + view_z * v_right);
-		tvec2 *= 0.025;
+
 
 	//=================================================================
 	//change in rear wheels velocity
@@ -340,7 +361,7 @@ float (float dist, vector dir) truck_physics =
 	pivot.z = pivot.z - truck.wheel1.view_ofs.z; //level with vehicle
 	local vector chassis_vec = pivot - truck.origin; //delta (forward vec)
 	local float chassis_yaw = vectoyaw(chassis_vec * -reverse); //new truck yaw
-	//local float chassis_yaw = fakeangles.y;
+
 	dang = -chassis_yaw + start_yaw;
 	if (dang > 180) dang = -360 + dang;
 	else if (dang < -180) dang = 360 + dang;
@@ -362,35 +383,39 @@ float (float dist, vector dir) truck_physics =
 	} else if (dist4 > fakedist) dist4 = fakedist;
 
 	//rear wheels
+	chassis_vec = normalize(chassis_vec);
+
 	self = truck.wheel3;
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
 	view = self.view_ofs;
-	
+	self.velocity +=// svec
+		avec.y * 0.628 / 360 * (view_x * v_right + view_y * v_forward)
+		- avec.x * 0.628 / 360 * (view_x * v_up - view_z * v_forward)
+		- avec.z * 0.628 / 360 * (view_y * v_up + view_z * v_right);
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin;
 	delta = self.origin - view;
 	fakeview = up(delta) + view;
 	setorigin(self, fakeview);
-	walkmove(chassis_yaw, dist3); //move from view
-	vec3 = notup(self.origin - fakeview); //movestep delta
+	walkmove(chassis_yaw, dist3);
+	vec3 = notup(self.origin - fakeview);
 	local vector work3 = vec3;
-	delta -= 10 * tvec;
-	vec3 += vdamping(delta);
+	delta = vdamping(delta, tvec);
+	vec3 += delta;
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
-	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
+	traceline2(self.origin, self.origin - '0 0 8', self, 1);
 	if (trace_ent != world) {
-		entvec = self.velocity = trace_ent.velocity;
+		entvec = trace_ent.velocity;
 		if (entvec_z > 0) entvec_z *= -1;
 		vec3 += entvec * 0.1;
 	}
-	local vector tvec3 = svec
-		+ avec.y * 0.628 / 360 * (view_x * v_right + view_y * v_forward)
-		- avec.x * 0.628 / 360 * (view_x * v_up - view_z * v_forward)
-		- avec.z * 0.628 / 360 * (view_y * v_up + view_z * v_right);
-	tvec3 *= 0.025;
 
 	self = truck.wheel4;
 	if ((self.velocity.z == 0) && !(self.flags & FL_ONGROUND)) self.flags = self.flags + FL_ONGROUND;
 	view = self.view_ofs;
+	self.velocity +=// svec
+		avec.y * 0.628 / 360 * (view_x * v_right + view_y * v_forward)
+		- avec.x * 0.628 / 360 * (view_x * v_up - view_z * v_forward)
+		- avec.z * 0.628 / 360 * (view_y * v_up + view_z * v_right);
 	
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin;
 	delta = self.origin - view;
@@ -399,23 +424,16 @@ float (float dist, vector dir) truck_physics =
 	walkmove(chassis_yaw, dist4);
 	vec4 = notup(self.origin - fakeview);
 	local vector work4 = vec4;
-	delta -= 10 * tvec;
-	vec4 += vdamping(delta);
+	vec4 += vdamping(delta, tvec);
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
-	traceline2(self.origin, self.origin - '0 0 8', self, 1); //detect moving platform
+	traceline2(self.origin, self.origin - '0 0 8', self, 1);
 	if (trace_ent != world) {
-		entvec = self.velocity = trace_ent.velocity;
+		entvec = trace_ent.velocity;
 		if (entvec_z > 0) entvec_z *= -1;
 		vec4 += entvec * 0.1;
 	}
-	local vector tvec4 = svec
-		+ avec.y * 0.628 / 360 * (view_x * v_right + view_y * v_forward)
-		- avec.x * 0.628 / 360 * (view_x * v_up - view_z * v_forward)
-		- avec.z * 0.628 / 360 * (view_y * v_up + view_z * v_right);
-	tvec4 *= 0.025;
 
 	//Collider Tracelines
-	chassis_vec = normalize(chassis_vec);
 	self = truck;
 	//check below for moving plat
 	traceline2(self.origin + '0 0 20', self.origin - '0 0 6', self, 1); //origin is below bbox
@@ -455,23 +473,23 @@ float (float dist, vector dir) truck_physics =
 
 	tvec = notup(tvec);
 	work1 += up(vec1);
-	truck.wheel1.flyhack = work1;
+	//truck.wheel1.flyhack = work1;
 
 	work2 += up(vec2);
-	truck.wheel2.flyhack = work2;
+	//truck.wheel2.flyhack = work2;
 
 	work3 += up(vec3);
-	truck.wheel3.flyhack = work3;
+	//truck.wheel3.flyhack = work3;
 
 	work4 += up(vec4);
-	truck.wheel4.flyhack = work4;
+	//truck.wheel4.flyhack = work4;
 
 //	dprint(vtos(work1)); dprint("f work1\n");
 //	dprint(vtos(work2)); dprint("f work2\n");
 //	dprint(vtos(work3)); dprint("f work3\n");
 //	dprint(vtos(work4)); dprint("f work4\n");
 local vector work = work1 + work2 + work3 + work4;
-//dprint(vtos(work)); dprint("total work\n");
+dprint(vtos(work)); dprint("total work\n");
 
 	//actual travel
 	svec = (svec + (work * 10));
@@ -481,17 +499,17 @@ local vector work = work1 + work2 + work3 + work4;
 	local vector final_vec = v_forward + (work1 + work2 - work3 - work4);
 	local vector final_angs = vectoangles(final_vec);
 
-	dang = final_angs.x - truck.angles.x;
+	dang = (final_angs.x - truck.angles.x);
 	if (dang > 180) dang = -360 + dang;
 	else if (dang < -180) dang = 360 + dang;
 	avec.x = ((dang) * 1);
-
+	/*
 	local vector offsets = truck.wheel1.view_ofs;
 	final_vec = (work1 + work2) * v_right * v_right + offsets_x * v_forward;
 	final_vec -= (work3 + work4) * v_right * v_right - offsets_x * v_forward;
 	final_vec += (work2 + work4) * v_forward * v_forward + offsets_y * v_right;
 	final_vec -= (work1 +  work3) * v_forward * v_forward - offsets_y * v_right;
-
+	*/
 	dang = (final_angs.y - truck.angles.y);
 	if (dang > 180) dang = -360 + dang;
 	else if (dang < -180) dang = 360 + dang;
@@ -525,6 +543,7 @@ local vector work = work1 + work2 + work3 + work4;
 	//dprint(" start angles\n");
 	//dprint(vtos(avec));
 	//dprint(" avec\n");
+	dprint(vtos(svec)); dprint("svec\n");
 
 	//=================================================================
 	//vehicle velocity, avelocity
@@ -532,12 +551,18 @@ local vector work = work1 + work2 + work3 + work4;
 
 	//move chassis
 	truck.avelocity = avec;
+	//if (throttle == -1) svec = 0;
 	truck.velocity = svec;
 
+	
 	//fix stuck
 	if ((truck.flags & FL_ONGROUND) && (truck.origin.z < (truck.height + (truck.velocity.z * 0.025))))
 	{ 
 		truck.velocity.z = 0;
+		truck.wheel1.velocity = 0;
+		truck.wheel2.velocity = 0;
+		truck.wheel3.velocity = 0;
+		truck.wheel4.velocity = 0;
 		setorigin(truck, truck.origin + '0 0 18');
 		setorigin(truck.wheel1, truck.wheel1.origin + '0 0 16');
 		setorigin(truck.wheel2, truck.wheel2.origin + '0 0 16');
@@ -1119,7 +1144,7 @@ void(float i) spawn_truck_wheel =
 	truck.wheel4 = self;
 	self.view_ofs = '-32 -12 7';
 	} else dprint("too many wheels spawned!\n");
-	setorigin(self, truck.origin + self.view_ofs);
+	setorigin(self, truck.origin + self.view_ofs - '0 0 3');
 	self = truck;
 }
 
