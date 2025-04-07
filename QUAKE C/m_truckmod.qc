@@ -147,6 +147,7 @@ vector(vector work, vector tvec, vector dir, float mu) grip_control =
 		fakedir = normalize(work);
 	lateral_x = dir_y; lateral_y = -dir_x;
 	local float active = 0;
+	//dprint(vtos(fakedir)); dprint("fakedir\n");
 	if (work) active = 1;
 	//dprint(vtos(tvec)); dprint("tvec==============\n");
 	//dprint(vtos(work)); dprint("work in"); dprint(ftos(mu)); dprint(" mu in\n");
@@ -192,8 +193,7 @@ if (mu)
 	else mu = vlen(grip);
 }
 }
-	grip = tvec + work;
-	//dprint(vtos(grip)); dprint("final vec\n");
+	//grip = tvec + work; dprint(vtos(grip)); dprint("final vec\n");
 	return work;
 }
 //=================================================================
@@ -436,6 +436,8 @@ float (float dist, vector dir) truck_physics =
 	//dprint(vtos(work4)); dprint("work4\n");
 	if (vlen(work1) > fakedist) work1 = normalize(work1) * fakedist;
 	if (vlen(work2) > fakedist) work2 = normalize(work2) * fakedist;
+	//if (vlen(work3) > fakedist) work3 = normalize(work3) * fakedist;
+	//if (vlen(work4) > fakedist) work4 = normalize(work4) * fakedist;
 
 	if !(throttle == -1) {
 		work3 = '0 0 0';
@@ -447,9 +449,9 @@ float (float dist, vector dir) truck_physics =
 	vup = -vec2 * v_up + 3;
 	work2 = grip_control(work2, tvec, dir * throttle, vup);
 	vup = -vec3 * v_up + 3;
-	work3 = grip_control(work3, tvec, chassis_vec, vup);
+	work3 = grip_control(work3, tvec, chassis_vec * throttle, vup);
 	vup = -vec4 * v_up + 3;
-	work4 = grip_control(work4, tvec, chassis_vec, vup);
+	work4 = grip_control(work4, tvec, chassis_vec * throttle, vup);
 
 	tvec = notup(tvec);
 	work1 += up(vec1);
@@ -464,10 +466,10 @@ float (float dist, vector dir) truck_physics =
 	work4 += up(vec4);
 	truck.wheel4.flyhack = work4;
 
-	//dprint(vtos(work1)); dprint("f work1\n");
-	//dprint(vtos(work2)); dprint("f work2\n");
-	//dprint(vtos(work3)); dprint("f work3\n");
-	//dprint(vtos(work4)); dprint("f work4\n");
+//	dprint(vtos(work1)); dprint("f work1\n");
+//	dprint(vtos(work2)); dprint("f work2\n");
+//	dprint(vtos(work3)); dprint("f work3\n");
+//	dprint(vtos(work4)); dprint("f work4\n");
 local vector work = work1 + work2 + work3 + work4;
 //dprint(vtos(work)); dprint("total work\n");
 
