@@ -10,6 +10,7 @@ float I_AM_TURRET = 262144; //dumptruck_ds
 .entity turret;
 .entity collider2;
 .entity collider1;
+.entity brushcollider;
 
 .entity wheel1, wheel2, wheel3, wheel4;
 

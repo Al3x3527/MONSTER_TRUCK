@@ -73,9 +73,14 @@ void(float relative) cpywalk =
 		}
 	dist = vlen(delta);
 
-	local vector dang = self.owner.angles + self.v_angle - self.angles;
+	local vector dang;
+	if (self.movetype == MOVETYPE_PUSH)
+		dang = fakeangles + self.v_angle - self.angles;
+	else
+		dang = self.owner.angles + self.v_angle - self.angles;
 	if (dang.y > 180) dang.y = -360 + dang.y;
 	else if (dang.y < -180) dang.y = 360 + dang.y;
+	//if (self.movetype == MOVETYPE_PUSH) dang_x *= -1; just spins
 	self.avelocity = dang * 10;
 
 	if (dist > 100) {
@@ -93,7 +98,9 @@ void(float relative) cpywalk =
 			delta = delta * trace_fraction;
 			} else delta = '0 0 0';
 	}
+	
 	self.velocity = delta * 10;
+	//dprint(vtos(delta * 10)); dprint(vtos(self.velocity)); dprint("velocity\n");
 };
 
 //vector control damping
@@ -293,7 +300,7 @@ float (float dist, vector dir) truck_physics =
 		avec.y * 0.628 / 360 * (view_x * v_right + view_y * v_forward)
 		- avec.x * 0.628 / 360 * (view_x * v_up - view_z * v_forward)
 		- avec.z * 0.628 / 360 * (view_y * v_up + view_z * v_right);
-	dprint(vtos(self.velocity)); dprint("wheel velocity\n");
+	//dprint(vtos(self.velocity)); dprint("wheel velocity\n");
 	
 	view = v_forward * view.x + v_right * view.y + v_up * view.z + truck.origin; //start from the resting position
 	local vector delta = self.origin - view;
@@ -303,12 +310,12 @@ float (float dist, vector dir) truck_physics =
 	vec1 = notup(self.origin - fakeview); //get to current position from start position
 	local vector work1 = vec1;
 	//delta *= -1;
-	dprint(vtos(delta)); dprint("delta\n");
+	//dprint(vtos(delta)); dprint("delta\n");
 	//delta -= damp2 * tvec;
 	//if (delta_z > 10) delta *= 0.1;
 	//dprint(vtos(delta)); dprint("mod delta\n");
 	delta = vdamping(delta, tvec);
-	dprint(vtos(delta)); dprint("damp delta\n");
+	//dprint(vtos(delta)); dprint("damp delta\n");
 	vec1 += delta;
 	if (self.flags & FL_ONGROUND) self.flags = self.flags - FL_ONGROUND;
 	/*diff = dist1 - vlen(vec1);
@@ -440,7 +447,7 @@ float (float dist, vector dir) truck_physics =
 	local vector vec5;
 	if (trace_ent != world)
 		vec5 = trace_ent.velocity; //touching ground velocity (as velocity)
-	if(vec5 != '0 0 0') {dprint(vtos(vec5)); dprint("vec5\n");}
+	//if(vec5 != '0 0 0') {dprint(vtos(vec5)); dprint("vec5\n");}
 
 	//=================================================================
 	//vehicle forces, target vector
@@ -489,7 +496,7 @@ float (float dist, vector dir) truck_physics =
 //	dprint(vtos(work3)); dprint("f work3\n");
 //	dprint(vtos(work4)); dprint("f work4\n");
 local vector work = work1 + work2 + work3 + work4;
-dprint(vtos(work)); dprint("total work\n");
+//dprint(vtos(work)); dprint("total work\n");
 
 	//actual travel
 	svec = (svec + (work * 10));
@@ -543,7 +550,7 @@ dprint(vtos(work)); dprint("total work\n");
 	//dprint(" start angles\n");
 	//dprint(vtos(avec));
 	//dprint(" avec\n");
-	dprint(vtos(svec)); dprint("svec\n");
+	//dprint(vtos(svec)); dprint("svec\n");
 
 	//=================================================================
 	//vehicle velocity, avelocity
@@ -591,7 +598,7 @@ void(entity truck) spawn_truck_driver =
 	self = pilot;
 
 	player.driver = pilot;
-	pilot.owner = truck;
+	pilot.owner = truck.owner;
 	setmodel(self, "progs/player.mdl");
 	setsize(self, '-10 -10 0', '10 10 30');
 	if (truck.classname == "vehicle_truck")
@@ -825,6 +832,15 @@ void() truck_drive = [ $forward1, truck_drive ]
 		self = other.driver;
 		cpywalk(0);
 	}
+	if (truck.brushcollider) {
+		self = truck.brushcollider;
+		//self.solid = SOLID_BSP;
+		cpywalk(0);
+		//self.solid = SOLID_BSP;
+		//self.velocity *= 2;
+		//self.avelocity *= 2;
+		self.nextthink = self.ltime + .1;
+	}
 };
 
 void() truck_touch =
@@ -839,6 +855,8 @@ void() truck_touch =
 		return;
 
 	if (self.classname == "truck_collider")
+		self = self.owner;
+	if (self.classname == "func_truck")
 		self = self.owner;
 
 	if (self.driver == other) return;
@@ -1087,7 +1105,7 @@ void() spawn_truck_gunner =
 	self = gunner;
 
 	truck.turret = gunner;
-	gunner.owner = truck;
+	gunner.owner = truck.owner;
 	self.classname = "truck_gunner";
 	setmodel(self, "progs/player.mdl");
 	setsize(self, '-10 -10 0', '10 10 30');
@@ -1109,7 +1127,7 @@ void() spawn_truck_passenger =
 	self = shotgun;
 
 	truck.passenger = shotgun;
-	shotgun.owner = truck;
+	shotgun.owner = truck.owner;
 	setmodel(self, "progs/player.mdl");
 	setsize(self, '-10 -10 0', '10 10 30');
 	self.view_ofs = '5 7 20';
@@ -1127,7 +1145,7 @@ void(float i) spawn_truck_wheel =
 	local entity wheel = spawn();
 	self = wheel;
 	self.movetype = MOVETYPE_STEP;
-	self.owner = truck;
+	self.owner = truck.owner;
 	self.solid = SOLID_TRIGGER;
 	self.classname = "wheel";
 	setsize(self, '-7 -7 -7', '7 7 7');
@@ -1204,6 +1222,14 @@ void() spawn_monster_truck =
 	self.classname = "monster_truck";
 	self.angles.y = self.angles.y;
 
+	local entity brush = spawn();
+	brush.owner = self;
+	self.owner = brush;
+	self.brushcollider = brush;
+	self = brush;
+	func_truck();
+	self = self.owner;
+
 	//wheels -- not the visible model
 	local float i = 0;
 	while (i < 4)
@@ -1214,17 +1240,155 @@ void() spawn_monster_truck =
 	self.touch = truck_touch;
 	self.think = truck_drive;
 	self.nextthink = time + 0.1;
-	spawn_truck_bed();
-	spawn_truck_front();
+	//spawn_truck_bed();
+	//spawn_truck_front();
 	//gunner
 	//if (self.spawnflags & I_AM_TURRET) {
 		spawn_truck_gunner();
 		spawn_truck_passenger();
 		//}
+
 };
 
 void() monster_truck =
 {
 	precache_model("progs/mini_truck.mdl");
 	spawn_monster_truck();
+}
+
+void() rohack = {
+	if (self.avelocity) {
+		self.flyhack = self.avelocity;
+		self.avelocity = '0 0 0';
+	} else {
+		self.avelocity = self.flyhack;
+	}
+	self.nextthink = self.ltime + 0.05;
+}
+
+void() beSolid =
+{
+	if (self.solid == SOLID_BSP)
+		self.solid = SOLID_NOT;
+	else
+		self.solid = SOLID_BSP;
+	self.velocity += '0 0 0';
+	self.avelocity += '0 0 0';
+	self.nextthink = self.ltime + 0.05;
+}
+
+vector(vector vec) notnormal = {
+	vec -= vec * trace_plane_normal * trace_plane_normal;
+	return(vec);
+}
+
+void() truck_blocked =
+{
+	dprint("truck blocked\n");
+	if (other.flags & FL_MONSTER) {
+	truck_touch();
+	return;
+	}
+	makevectors(self.velocity);
+	if (trace_plane_normal != v_up){
+	self.velocity = (other.velocity * trace_plane_normal - notup(self.velocity) * trace_plane_normal) 
+	* 0.5 * trace_plane_normal + up(self.velocity) + notnormal(notup(self.velocity));
+	self.owner.velocity = self.velocity;
+	}
+}
+
+void() func_truck =
+{
+	precache_model("progs/truck_visible.bsp");
+	self.solid = SOLID_BSP;
+	self.movetype = MOVETYPE_PUSH;
+	self.flags = FL_FLY;
+	self.view_ofs = '0 0 -10';
+	setmodel(self, "progs/truck_visible.bsp");
+	setorigin(self, self.owner.origin + self.view_ofs);
+	self.classname = "func_truck";
+	self.touch = truck_touch;
+	self.blocked = truck_blocked;
+	self.speed = 1;
+	self.think = SUB_Null;
+//	self.nextthink = 10;
+}
+
+void() pester = {
+	self.velocity += '0 0 0';
+	self.avelocity += '0 0 0';
+	self.nextthink = self.ltime + 0.1;
+}
+
+void() rotate2 =
+{
+	local entity targ = find(world, targetname, self.target);
+while (targ != world) {
+	targ.velocity = '0 0 -10';
+	targ = find(targ, targetname, self.target);
+}	
+	self.nextthink = time + 3;
+	self.think = rotate_use;
+}
+
+void() rotate_use =
+{
+	local entity targ = find(world, targetname, self.target);
+	while (targ != world){
+	targ.avelocity = '0 100 0';
+	
+	targ.think = pester;
+	targ.nextthink = targ.ltime + 0.1;
+	local entity org = find(world, targetname, targ.target);
+	setorigin(targ, org.origin);
+	targ.velocity = '0 0 10';
+	targ = find(targ, targetname, self.target);
+	}
+	self.nextthink = time + 3;
+	self.think = rotate2;
+}
+
+void() func_origin = {};
+
+void() func_rotate =
+{
+	//precache_model("progs/truck_visible.bsp");
+	self.use = rotate_use;
+}
+
+void() bob3 =
+{
+local entity targ = find(world, targetname, self.target);
+targ.velocity = '0 0 0';
+targ.avelocity = '0 100 0';
+targ.think = pester;
+targ.nextthink = targ.ltime + 0.1;
+self.think = bob1;
+self.nextthink = time + 3;
+}
+
+void() bob2 =
+{
+local entity targ = find(world, targetname, self.target);
+targ.velocity = '0 0 -10';
+targ.think = pester;
+targ.nextthink = targ.ltime + 0.1;
+self.think = bob3;
+self.nextthink = time + 3;
+}
+
+void() bob1 =
+{
+local entity targ = find(world, targetname, self.target);
+targ.velocity = '0 0 10';
+targ.avelocity = '0 0 0';
+targ.think = pester;
+targ.nextthink = targ.ltime + 0.1;
+self.think = bob2;
+self.nextthink = time + 3;
+}
+
+void() func_bob =
+{
+	self.use = bob1;
 }
