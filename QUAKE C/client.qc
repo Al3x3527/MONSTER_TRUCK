@@ -1472,7 +1472,7 @@ PlayerPreThink
 Called every frame before physics are run
 ================
 */
-void() PlayerPreThink = {SUB_PlayerPreThink();}
+void() PlayerPreThink = {SUB_PlayerPreThink();} //truckmod
 
 /*
 ================
@@ -1481,67 +1481,8 @@ PlayerPostThink
 Called every frame after physics are run
 ================
 */
-void() PlayerPostThink =
-{
-	if ( intermission ) return;
-	
-	if (self.view_ofs == '0 0 0')
-		return;		// intermission or finale
-	if (self.deadflag)
-		return;
-	
-	if (self.customflags & CFL_LIMBO)
-	{
-		teleport_limbo_think();
-		return;
-	}
-	
-	// do weapon stuff
-	W_WeaponFrame ();
-	// do health stuff
-	PlayerHealthTick();
+void() PlayerPostThink = { SUB_PlayerPostThink(); }
 
-	// check to see if player landed and play landing sound	
-	//if !(self.flags & FL_VEHICLE) {
-	if ((self.jump_flag < -300) && (self.flags & FL_ONGROUND) && (self.health > 0))
-	{
-		if (self.jump_flag < -650 && !(self.customflags & CFL_PLUNGE) && !self.waterlevel)
-		{
-			T_Damage (self, world, world, 5, DMGTYPE_FALLING); 
-			sound (self, CHAN_VOICE, "player/land2.wav", 1, ATTN_NORM);
-		}
-		else if (self.waterlevel < WL_EYES)
-			sound (self, CHAN_VOICE, "player/land.wav", 1, ATTN_NORM);
-
-		self.jump_flag = 0;
-	}
-	//}
-
-	CheckPowerups ();
-	
-	if (self.movetype != MOVETYPE_NOCLIP) 
-	{
-		self.flags = not(self.flags, FL_FLY);
-	}
-	
-	if (!(self.flags & FL_ONGROUND))
-		self.jump_flag = self.velocity_z;
-		
-	// vaulting off the top of stairs sucks, but the right place to fix this is the .exe
-	/*
-	if (self.flags & FL_ONGROUND)
-	{
-		self.customflags = self.customflags | CFL_WASONGROUND;
-	}
-	else
-	{
-		self.jump_flag = self.velocity_z;
-		CheckStairDescend();
-		
-		self.customflags = not(self.customflags, CFL_WASONGROUND);
-	}
-	*/
-}
 
 /*
 ============

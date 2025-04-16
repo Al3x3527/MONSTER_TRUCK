@@ -15,6 +15,7 @@ float I_AM_TURRET = 262144; //dumptruck_ds
 .entity wheel1, wheel2, wheel3, wheel4;
 
 .vector flyhack; //could we use oldvelocity?
+.float fakeowner;
 
 // --------------------------------
 // ImpulseCommands --Copper
@@ -376,6 +377,8 @@ Called every frame before physics are run
 */
 void() SUB_PlayerPreThink =
 {
+	//self.flyhack = self.velocity; //truckmod
+	if((self.groundentity) && !(self.flags & FL_ONGROUND)) self.flags += FL_ONGROUND;
 	if (initCleanup)
 	{
 		fog_setFromEnt(self, self);
@@ -414,7 +417,7 @@ void() SUB_PlayerPreThink =
 	if (self.waterlevel == WL_WAIST)
 		CheckWaterJump();
 
-	//truckmod just this check ======================================================
+	//truckmod ======================================================
 	if !(self.flags & FL_VEHICLE) {
 		if (self.button2)
 		{
@@ -444,6 +447,79 @@ void() SUB_PlayerPreThink =
 
 		// ai_nav
 		//nav_editorThink();
+}
+/*
+================
+PlayerPostThink
+
+Called every frame after physics are run
+================
+*/
+void() SUB_PlayerPostThink =
+{
+	if (intermission) return;
+
+	if (self.view_ofs == '0 0 0')
+		return;		// intermission or finale
+	if (self.deadflag)
+		return;
+
+	if (self.customflags & CFL_LIMBO)
+	{
+		teleport_limbo_think();
+		return;
+	}
+
+	// do weapon stuff
+	W_WeaponFrame();
+	// do health stuff
+	PlayerHealthTick();
+
+	// check to see if player landed and play landing sound	
+	if ((self.jump_flag < -300) && (self.flags & FL_ONGROUND) && (self.health > 0))
+	{
+		if (self.jump_flag < -650 && !(self.customflags & CFL_PLUNGE) && !self.waterlevel)
+		{
+			T_Damage(self, world, world, 5, DMGTYPE_FALLING);
+			sound(self, CHAN_VOICE, "player/land2.wav", 1, ATTN_NORM);
+		} else if (self.waterlevel < WL_EYES)
+			sound(self, CHAN_VOICE, "player/land.wav", 1, ATTN_NORM);
+
+		self.jump_flag = 0;
+	}
+
+	CheckPowerups();
+
+	if (self.movetype != MOVETYPE_NOCLIP)
+	{
+		self.flags = not(self.flags, FL_FLY);
+	}
+
+	if (!(self.flags & FL_ONGROUND))
+		self.jump_flag = self.velocity_z;
+
+	// vaulting off the top of stairs sucks, but the right place to fix this is the .exe
+	/*
+	if (self.flags & FL_ONGROUND)
+	{
+		self.customflags = self.customflags | CFL_WASONGROUND;
+	}
+	else
+	{
+		self.jump_flag = self.velocity_z;
+		CheckStairDescend();
+
+		self.customflags = not(self.customflags, CFL_WASONGROUND);
+	}
+	*/
+	//truckmod fakeowner =====================================================================
+	if (self.fakeowner) { //don't clear all owners
+		if (self.fakeowner < time) {
+		self.fakeowner = 0;
+		self.owner = 0;
+		}
+	}
+
 }
 /*
 ===========

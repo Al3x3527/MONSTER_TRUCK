@@ -81,7 +81,8 @@ void(float shotcount, vector dir, vector spread) FireBullets =
 		for (ig = self; ig != world; lim++)	// ig == world if we hit a wall or hit nothing
 		{
 			traceline2(src, src + direction*2048, ig, 0);
-			
+			dprint("touch test\n"); dprint(ftos(trace_fraction)); dprint("trace fraction\n");
+			dprint(trace_ent.classname); dprint(" tent class ");
 			if (trace_ent == self)
 				return;	// some notrace shit happened
 		
@@ -115,7 +116,7 @@ void(float shotcount, vector dir, vector spread) FireBullets =
 				break;
 			}
 		}
-		
+	
 		if (trace_fraction != 1.0)
 		{
 			BulletImpact (4, direction);
@@ -123,6 +124,7 @@ void(float shotcount, vector dir, vector spread) FireBullets =
 		
 		if (trace_debug) dprint("bullet is over\n\n");
 	}
+
 }
 
 /*

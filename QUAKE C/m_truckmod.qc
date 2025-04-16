@@ -48,8 +48,11 @@ void(float relative) cpywalk =
 {
 	local vector delta, deltay, deltax1, deltax2, deltaz;
 	local float dist, yaw;
-	local vector avec = self.owner.avelocity;
-	local vector fakeangles = self.owner.angles;
+	local entity master;
+	if (self.owner.movetype == MOVETYPE_PUSH) master = self.owner.owner;
+	else master = self.owner;
+	local vector avec = master.avelocity;
+	local vector fakeangles = master.angles;
 	fakeangles.x = -fakeangles.x;
 	makevectors(fakeangles);
 	
@@ -57,18 +60,18 @@ void(float relative) cpywalk =
 		self.flags = self.flags - FL_ONGROUND; //this is dumb
 
 	//from origin
-	local vector del = self.owner.origin - self.origin;
+	local vector del = master.origin - self.origin;
 	//from angular
 	deltay = avec.y * 0.1 * (6.28 / 360) * ((del * v_forward) * v_right + (del * v_right) * v_forward);
 	deltax1 = -avec.x * 0.628 / 360 * (del * v_forward) * v_up;
 	deltax2 = -avec.x * 0.628 / 360 * (del * v_up) * v_forward;
 	deltaz = -avec.z * 0.628 / 360 * ((del * v_right) * v_up + (del * v_up) * v_right);
 	//from velocity
-	delta = deltay + deltax1 + deltax2 + deltaz + self.owner.velocity * 0.1;
+	delta = deltay + deltax1 + deltax2 + deltaz + master.velocity * 0.1;
 	//actual delta
 	if !(relative) {
-		local vector view = self.view_ofs + self.owner.view_ofs;
-		view = view.x * v_forward + view.y * v_right + view.z * v_up + self.owner.origin;
+		local vector view = self.view_ofs + master.view_ofs;
+		view = view.x * v_forward + view.y * v_right + view.z * v_up + master.origin;
 		delta = delta + view - self.origin;
 		}
 	dist = vlen(delta);
@@ -77,7 +80,7 @@ void(float relative) cpywalk =
 	if (self.movetype == MOVETYPE_PUSH)
 		dang = fakeangles + self.v_angle - self.angles;
 	else
-		dang = self.owner.angles + self.v_angle - self.angles;
+		dang = master.angles + self.v_angle - self.angles;
 	if (dang.y > 180) dang.y = -360 + dang.y;
 	else if (dang.y < -180) dang.y = 360 + dang.y;
 	//if (self.movetype == MOVETYPE_PUSH) dang_x *= -1; just spins
@@ -86,7 +89,7 @@ void(float relative) cpywalk =
 	if (dist > 100) {
 		//dprint("cpywalk setorigin\n");
 		setorigin(self, view);
-		self.velocity = self.owner.velocity;
+		self.velocity = master.velocity;
 		return;
 	}
 	if ((self.movetype == MOVETYPE_STEP) && (self.flags & FL_ONGROUND)) {
@@ -603,7 +606,7 @@ void(entity truck) spawn_truck_driver =
 	setsize(self, '-10 -10 0', '10 10 30');
 	if (truck.classname == "vehicle_truck")
 		self.view_ofs = '10 -15 40';
-	else self.view_ofs = '5 -7 20';
+	else self.view_ofs = '5 -7 30';
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
 	self.health = 1; //triggers doors
@@ -722,17 +725,17 @@ void() truck_fix = //add trigger truck fix to elevators?
 	truck.wheel2.origin.z = truck.origin.z + truck.wheel2.view_ofs.z - 3;
 	truck.wheel3.origin.z = truck.origin.z + truck.wheel3.view_ofs.z - 3;
 	truck.wheel4.origin.z = truck.origin.z + truck.wheel4.view_ofs.z - 3;
-	truck.collider1.origin.z = truck.origin.z;
-	truck.collider2.origin.z = truck.origin.z;
+	//truck.collider1.origin.z = truck.origin.z;
+	//truck.collider2.origin.z = truck.origin.z;
 	self = truck;
 	remove(truck.turret);
 	spawn_truck_gunner();
 	remove(truck.passenger);
 	spawn_truck_passenger();
-	remove(truck.collider1);
-	remove(truck.collider2);
-	spawn_truck_bed();
-	spawn_truck_front();
+	//remove(truck.collider1);
+	//remove(truck.collider2);
+	//spawn_truck_bed();
+	//spawn_truck_front();
 	remove(truck.driver.driver);
 	self = truck.driver;
 	spawn_truck_driver(truck);
@@ -834,14 +837,71 @@ void() truck_drive = [ $forward1, truck_drive ]
 	}
 	if (truck.brushcollider) {
 		self = truck.brushcollider;
-		//self.solid = SOLID_BSP;
 		cpywalk(0);
-		//self.solid = SOLID_BSP;
-		//self.velocity *= 2;
-		//self.avelocity *= 2;
 		self.nextthink = self.ltime + .1;
 	}
 };
+
+
+void() touch_check = {
+//FIX PUSH_ROTATE MOVETYPE_WALK COLLISION
+//this works well enough that you don't teleport when dismounting the truck
+//and you can usually stand on the truck if you try
+local vector direction, src;
+local entity ig;
+local float adjust, dist;
+if (self.velocity) direction = self.velocity;
+else direction = v_forward;
+direction -= '0 0 1';
+dist = 4;
+ig = self;
+
+for (adjust = -1; adjust < 2; adjust++) {
+	src = self.origin + '0 0 9' + v_right * adjust * dist; //check sides
+	traceline(src, src + direction * dist, 0, ig);
+	if (trace_ent.classname != "worldspawn") {
+		//dprint("not ignore touch!\n");
+		//if (self.owner) dprint("owner\n");
+		//else dprint("no owner\n");
+		//dprint(ftos(adjust)); dprint(" adjust\n");
+		break;
+	}
+	/*
+	if (trace_fraction != 1) {
+	//try again
+		src -= v_forward * 0.1;
+		traceline2(src, src + direction * dist, ig, 0);
+		if (trace_ent.classname != "worldspawn") {
+			dprint("not ignore touch 2!\n"); //never called
+			break;
+		}
+	//dprint("probably touch\n");
+	}
+	else if !(trace_fraction)
+		dprint("probably touch 2\n"); //never called
+		*/
+}
+if (trace_ent.classname == "worldspawn") {
+	//dprint("ignore touch\n");
+	self.owner = other;
+}
+self.fakeowner = time + 0.4;
+if !(self.flags & FL_ONGROUND) self.flags += FL_ONGROUND;
+}
+
+void() move_walk_truck = {
+//we know other is a player
+local entity truck = self.brushcollider;
+local entity client = other;
+self = client;
+other = truck;
+if (!(self.fakeowner) || (self.owner)){
+self.owner = 0;
+touch_check();
+}
+self = truck.owner;
+other = client;
+}
 
 void() truck_touch =
 {
@@ -860,6 +920,7 @@ void() truck_touch =
 		self = self.owner;
 
 	if (self.driver == other) return;
+	move_walk_truck();
 	if (self.count < time) {
 		sprint(other, "Press 1 to drive Truck\n");
 		}
@@ -868,6 +929,7 @@ void() truck_touch =
 		other.impulse = 0;
 		self.driver = other;
 		other.flags = other.flags + FL_VEHICLE;
+		other.fakeowner = 0;
 		self.flags = self.flags + FL_CLIENT;
 		}
 }
@@ -1020,7 +1082,7 @@ void() gunner_find_enemy =
 
 void() gunner_choose_yaw =
 {
-	local entity truck = self.owner;
+	local entity truck = self.owner.owner;
 	enemy_vis = visible(self.enemy);
 	enemy_range = range(self.enemy);
 
@@ -1041,7 +1103,7 @@ void() gunner_choose_yaw =
 
 void() gunner_check_atk =
 {
-	local entity pilot = self.owner.driver;
+	local entity pilot = self.owner.owner.driver;
 	//dprint("gunner check atk\n");
 	gunner_choose_yaw();
 	if (!alive(self.enemy)) {
@@ -1109,7 +1171,7 @@ void() spawn_truck_gunner =
 	self.classname = "truck_gunner";
 	setmodel(self, "progs/player.mdl");
 	setsize(self, '-10 -10 0', '10 10 30');
-	self.view_ofs = '-35 0 25';
+	self.view_ofs = '-35 0 35';
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
 	self.health = 1;
@@ -1130,7 +1192,7 @@ void() spawn_truck_passenger =
 	shotgun.owner = truck.owner;
 	setmodel(self, "progs/player.mdl");
 	setsize(self, '-10 -10 0', '10 10 30');
-	self.view_ofs = '5 7 20';
+	self.view_ofs = '5 7 30';
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
 	self.health = 1;
@@ -1277,41 +1339,80 @@ void() beSolid =
 	self.nextthink = self.ltime + 0.05;
 }
 
-vector(vector vec) notnormal = {
-	vec -= vec * trace_plane_normal * trace_plane_normal;
-	return(vec);
-}
-
 void() truck_blocked =
 {
-	dprint("truck blocked\n");
-	if (other.flags & FL_MONSTER) {
+	//dprint(trace_ent.classname); 
+	//dprint("truck blocked\n");
+	if (other.solid != SOLID_BSP) {
 	truck_touch();
 	return;
 	}
-	makevectors(self.velocity);
-	if (trace_plane_normal != v_up){
-	self.velocity = (other.velocity * trace_plane_normal - notup(self.velocity) * trace_plane_normal) 
-	* 0.5 * trace_plane_normal + up(self.velocity) + notnormal(notup(self.velocity));
-	self.owner.velocity = self.velocity;
+	/*
+	local vector nml = trace_plane_normal;
+	nml -= nml * v_up * v_up; //in plane
+	local vector vel, block;
+	traceline(self.origin, self.origin + (nml * (trace_plane_dist + 0.1)), 1, self);
+	if (trace_fraction == 1) {
+	//look for a wall
+	local vector view = self.owner.origin;
+	makevectors(self.owner.driver.v_angle);
+	local vector cam = v_forward;
+	cam_z = 0;
+	makevectors(self.owner.angles);
+	nml = v_forward;
+	if ((cam * nml) < 0) nml *= -1;
+	
+	traceline(view, view + (nml * 36), 1, self);
+	if ((trace_ent == world) || (trace_fraction != 1)){
+		dprint("wall found\n");
+		vel = self.owner.velocity;
+		block = ((vel * nml) + 100) * nml;
+		self.velocity = self.owner.velocity -= 2 * block;
+		}
+	else {
+	
+		if ((cam * v_right) < 0) nml -= v_right;
+		else nml += v_right;
+		nml = normalize(nml);
+		traceline(view, view + (nml * 41), 1, self);
+		if ((trace_startsolid) || (trace_fraction != 1)) {
+			dprint(vtos((nml * 41) + view)); dprint("wall found2\n");
+			vel = self.owner.velocity;
+			block = ((vel * nml) + 10) * nml;
+			self.velocity = self.owner.velocity -= 2 * block;
+		}
+		else {
+			dprint(vtos(cam)); dprint(vtos(nml)); dprint("cam nml\n");
+		}
+	//}
+		return;
 	}
+	dprint(vtos(nml)); dprint("valid normal\n");
+	//valid BSP normal
+	makevectors(self.owner.angles);
+	vel = self.owner.velocity;
+	local vector inplane = vel - (vel * nml * nml);
+	block = vel * nml * nml;
+	block = block * v_up * v_up; //keep v_up component
+	self.velocity = self.owner.velocity = inplane + block;
+	//}
+	*/
 }
 
 void() func_truck =
 {
-	precache_model("progs/truck_visible.bsp");
+	precache_model("progs/truck.bsp");
 	self.solid = SOLID_BSP;
 	self.movetype = MOVETYPE_PUSH;
 	self.flags = FL_FLY;
-	self.view_ofs = '0 0 -10';
-	setmodel(self, "progs/truck_visible.bsp");
-	setorigin(self, self.owner.origin + self.view_ofs);
+	self.view_ofs = '0 0 0';
+	setmodel(self, "progs/truck.bsp");
+	setorigin(self, self.owner.origin + self.view_ofs - self.owner.view_ofs);
 	self.classname = "func_truck";
 	self.touch = truck_touch;
 	self.blocked = truck_blocked;
 	self.speed = 1;
 	self.think = SUB_Null;
-//	self.nextthink = 10;
 }
 
 void() pester = {
