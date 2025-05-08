@@ -43,6 +43,12 @@ $frame right1 right2
 //left
 $frame left1 left2
 
+//driving
+//$frame DriveF = 0; 
+//$frame DriveL = 1;
+//$frame DriveR = 2;
+//$frame Turret = 3;
+
 //try to walkmove if on ground, call traceline if flying
 void(float relative) cpywalk =
 {
@@ -602,10 +608,10 @@ void(entity truck) spawn_truck_driver =
 
 	player.driver = pilot;
 	pilot.owner = truck.owner;
-	setmodel(self, "progs/player.mdl");
+	setmodel(self, "progs/driving_ranger.mdl");
 	setsize(self, '-10 -10 0', '10 10 30');
-	if (truck.classname == "vehicle_truck")
-		self.view_ofs = '10 -15 40';
+	if (truck.style)
+		self.view_ofs = '10 -15 15';
 	else self.view_ofs = '5 -7 30';
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
@@ -781,6 +787,7 @@ if !(self.driver.health) {
 	makevectors(self.v_angle);
 	local vector look = v_forward;
 	local vector offset = '-100 0 30';
+	if (truck.style) offset *= 2;
 	camera_orbit(look, offset);
 	truck_ImpulseCommands();
 	self = truck;
@@ -792,8 +799,11 @@ void() truck_drive = [ $forward1, truck_drive ]
 	local float dist = 0;
 	if (self.driver) {
 		other = self.driver;
-		if (other.button2)
+		if (other.button2) {
 			dist = 4;
+			if (self.skin > 5) self.skin -= 6;
+			}
+		else if (self.skin < 6) self.skin += 6;
 		local vector dir = truck_pilot();
 	}	//chassis physics / prethink
 	local float direction = truck_physics(dist, dir);
@@ -839,6 +849,12 @@ void() truck_drive = [ $forward1, truck_drive ]
 		self = truck.brushcollider;
 		cpywalk(0);
 		self.nextthink = self.ltime + .1;
+	}
+	if (truck.weapon1) {
+		self = truck.weapon2;
+		cpywalk(0);
+		self = truck.weapon1;
+		cpywalk(0);
 	}
 };
 
@@ -938,123 +954,27 @@ void() truck_touch =
 Truck Gunner Stuff
 ===================================================*/
 
-void() W_FireShotgun1 =
+void() W_Fire_Turret =
 {
-	local vector dir;
-
-sound(self, CHAN_WEAPON, "weapons/guncock.wav", 1, ATTN_NORM);
-
-self.punchangle_x = -2;
-local vector v = self.angles;
-v_x *= -1;
-makevectors(v);
-
-self.currentammo = self.ammo_shells = self.ammo_shells - 1;
-dir = v_forward;
-
-ClearMultiDamage();
-FireBullets(6, dir, '0.04 0.04 0');
-self.attack_finished = time + 0.5;
-
-ApplyMultiDamage();
+	local vector dir, org;
+	
+	sound(self, CHAN_WEAPON, "weapons/rocket1i.wav", 1, ATTN_NORM);
+	local vector v = self.angles;
+	v_x *= -1;
+	makevectors(v);
+	dir = v_forward;
+	org = self.origin;
+	launch_nail(org, v_forward * 1996);
+	self.attack_finished += 0.09;
 }
 
-void() W_FireSuperShotgun1 =
-{
-	local vector v, dir;
-if (self.currentammo == 1)
-{
-	if (self.items & IT_SHOTGUN)
-		W_FireShotgun1();
-	return;
-}
-
-sound(self ,CHAN_WEAPON, "weapons/shotgn2.wav", 1, ATTN_NORM);
-
-self.punchangle_x = -4;
-v = self.angles;
-v_x *= -1;
-makevectors(v);
-
-self.currentammo = self.ammo_shells = self.ammo_shells - 2;
-dir = v_forward;
-
-ClearMultiDamage();
-
-FireBullets(14, dir, '0.14 0.08 0');
-self.attack_finished = time + 0.7;
-
-ApplyMultiDamage();
-}
-
-void()	gunner_shot1 = [$shotatt1, gunner_shot2] {self.weaponframe = 1;
-self.effects = self.effects | EF_MUZZLEFLASH; }
-void()	gunner_shot2 = [$shotatt2, gunner_shot3] {self.weaponframe = 2; }
-void()	gunner_shot3 = [$shotatt3, gunner_shot4] {self.weaponframe = 3; }
-void()	gunner_shot4 = [$shotatt4, gunner_shot5] {self.weaponframe = 4; }
-void()	gunner_shot5 = [$shotatt5, gunner_shot6] {self.weaponframe = 5; }
-void()	gunner_shot6 = [$shotatt6, gunner_turret_atk1] {self.weaponframe = 6; }
-
-void() W_FireNailgun1 =
-{
-	vector offset, v, org;
-
-if (!alive(self.enemy) || (enemy_range > 2)) {
-self.think = gunner_turret_atk1;
-dprint("nailgun1 e out of range\n");
-return;}
-
-self.angles = vectoangles(self.enemy.origin - self.origin);
-v = self.angles;
-v_x *= -1;	// pitch comes back inverted from vectoangles :|
-makevectors(v);
-
-sound(self, CHAN_WEAPON, "weapons/rocket1i.wav", 1, ATTN_NORM);
-self.currentammo = self.ammo_nails = self.ammo_nails - 1;
-offset = VEC_ORIGIN;
-if (mod(self.cnt, 2)) offset_x = -2.5;
-else offset_x = 2.5;
-
-org = W_SpikeOrigin(offset);
-launch_nail(org, v_forward * 1996);
-self.attack_finished += 0.09;
-}
-
-void()	gunner_nail1 = [$nailatt1, gunner_nail2] { W_FireNailgun1();
-self.effects = self.effects | EF_MUZZLEFLASH; }
-void()	gunner_nail2 = [$nailatt2, gunner_nail1] {W_FireNailgun1(); 
-self.effects = self.effects | EF_MUZZLEFLASH; }
-
-void() gunner_light1 = [$light1, gunner_light2]
-{
+void() gunner_turret1 = [3, gunner_check_atk] {
+	local entity gunner = self;
+	self = self.owner.owner.weapon1;
 	self.effects = self.effects | EF_MUZZLEFLASH;
-	self.weaponframe = self.weaponframe + 1;
-	if (self.weaponframe == 5)
-		self.weaponframe = 1;
-
-	W_FireLightning();
-	self.attack_finished = time + 0.2;
+	W_Fire_Turret();
+	self = gunner;
 }
-void() gunner_light2 = [$light2, gunner_light1]
-{
-	self.effects = self.effects | EF_MUZZLEFLASH;
-	self.weaponframe = self.weaponframe + 1;
-	if (self.weaponframe == 5) {
-		self.weaponframe = 1;
-		self.think = gunner_check_atk;
-		}
-
-	W_FireLightning();
-	self.attack_finished = time + 0.2;
-}
-
-void() gunner_rocket1 = [$rockatt1, gunner_rocket2] {self.weaponframe = 1;
-self.effects = self.effects | EF_MUZZLEFLASH; }
-void() gunner_rocket2 = [$rockatt2, gunner_rocket3] {self.weaponframe = 2; }
-void() gunner_rocket3 = [$rockatt3, gunner_rocket4] {self.weaponframe = 3; }
-void() gunner_rocket4 = [$rockatt4, gunner_rocket5] {self.weaponframe = 4; }
-void() gunner_rocket5 = [$rockatt5, gunner_rocket6] {self.weaponframe = 5; }
-void() gunner_rocket6 = [$rockatt6, gunner_turret_atk1] {self.weaponframe = 6; }
 
 void() gunner_find_enemy =
 {
@@ -1099,6 +1019,8 @@ void() gunner_choose_yaw =
 	if (self.classname != "truck_gunner") { dprint(self.classname); dprint("\n"); }
 	self.v_angle_y = self.ideal_yaw - truck.angles_y;
 	ChangeYaw();
+
+	if (truck.weapon2) truck.weapon2.v_angle = self.v_angle;
 }
 
 void() gunner_check_atk =
@@ -1119,40 +1041,11 @@ void() gunner_check_atk =
 	self.angles = vectoangles(self.enemy.origin - self.origin);
 
 	//dprint("gca angles set\n"); np
-	if (pilot.weapon == IT_SHOTGUN)
-	{
-		//dprint("gunner shot called\n");
-		gunner_shot1();
-		W_FireShotgun1();
-	} else if (pilot.weapon == IT_SUPER_SHOTGUN)
-	{
-		gunner_shot1();
-		W_FireSuperShotgun1();
-	} else if (pilot.weapon == IT_NAILGUN || pilot.weapon == IT_SUPER_NAILGUN)
-	{
-		self.ammo_nails = 3;
-		gunner_nail1();
-		W_FireSpikes();
-	} else if (pilot.weapon == IT_GRENADE_LAUNCHER)
-	{
-		player_rocket1();
-		W_FireGrenade();
-	} else if (pilot.weapon == IT_ROCKET_LAUNCHER)
-	{
-		player_rocket1();
-		W_FireRocket();
-	}
-
-	else if (pilot.weapon == IT_LIGHTNING)
-	{
-		gunner_light1();
-		self.attack_finished = time + 0.1;
-		sound(self, CHAN_AUTO, "weapons/lstart.wav", 1, ATTN_NORM);
-	}
+	gunner_turret1();
 }
 
-void() gunner_turret_atk1 = [0, gunner_turret_atk2] {gunner_choose_yaw();}
-void() gunner_turret_atk2 = [0, gunner_turret_atk3] {gunner_choose_yaw();}
+void() gunner_turret_atk1 = [3, gunner_turret_atk2] {gunner_choose_yaw();}
+void() gunner_turret_atk2 = [3, gunner_turret_atk3] {gunner_choose_yaw();}
 void() gunner_turret_atk3 = [self.frame, gunner_turret_atk1] {gunner_check_atk();}
 
 //===================================================
@@ -1169,12 +1062,18 @@ void() spawn_truck_gunner =
 	truck.turret = gunner;
 	gunner.owner = truck.owner;
 	self.classname = "truck_gunner";
-	setmodel(self, "progs/player.mdl");
+	setmodel(self, "progs/driving_ranger.mdl");
+	self.frame = 3;
 	setsize(self, '-10 -10 0', '10 10 30');
-	self.view_ofs = '-35 0 35';
+	self.view_ofs = '-30 0 23';
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
 	self.health = 1;
+	if (truck.style) {
+		self.view_ofs_x *= 2;
+		self.view_ofs_y *= 2;
+		self.view_ofs_z += 8;
+	}
 	setorigin(self, truck.origin + self.view_ofs); //fix next truck think
 	self.th_missile = gunner_turret_atk1;
 	self.think = self.th_missile;
@@ -1190,13 +1089,18 @@ void() spawn_truck_passenger =
 
 	truck.passenger = shotgun;
 	shotgun.owner = truck.owner;
-	setmodel(self, "progs/player.mdl");
+	setmodel(self, "progs/driving_ranger.mdl");
 	setsize(self, '-10 -10 0', '10 10 30');
-	self.view_ofs = '5 7 30';
+	self.view_ofs = '5 7.5 7';
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
 	self.health = 1;
 	setorigin(self, truck.origin + self.view_ofs);
+	if (truck.style) {
+		self.view_ofs_x *= 2;
+		self.view_ofs_y *= 2;
+		self.view_ofs_z += 8;
+	}
 	self = truck;
 }
 
@@ -1224,6 +1128,10 @@ void(float i) spawn_truck_wheel =
 	truck.wheel4 = self;
 	self.view_ofs = '-32 -12 7';
 	} else dprint("too many wheels spawned!\n");
+	if (truck.style) {
+		self.view_ofs_x *= 2;
+		self.view_ofs_y *= 2;
+	}
 	setorigin(self, truck.origin + self.view_ofs - '0 0 3');
 	self = truck;
 }
@@ -1273,14 +1181,54 @@ void() spawn_truck_front =
 	self = truck;
 }
 
+void() spawn_truck_mg =
+{	
+	precache_model("progs/browning.mdl");
+	precache_model("progs/mg_ring.mdl");
+	local entity truck = self;
+	local entity gun = spawn();
+	local entity arm = spawn();
+
+	self = arm;
+	self.solid = SOLID_TRIGGER;
+	self.movetype = MOVETYPE_FLY;
+	self.flags = FL_VEHICLE;
+	setsize(self, '-20 -20 0', '40 20 40');
+	self.view_ofs = '-60 0 30';
+	setorigin(self, truck.origin);
+	self.owner = truck.owner;
+	truck.weapon2 = self;
+	self.classname = "weapon_arm";
+	setmodel(self, "progs/mg_ring.mdl");
+
+	self = gun;
+	self.solid = SOLID_TRIGGER;
+	self.movetype = MOVETYPE_FLY;
+	self.flags = FL_VEHICLE;
+	setsize(self, '-20 -5 0', '50 5 10');
+	self.owner = arm;
+	self.view_ofs = '40 0 45' - self.owner.view_ofs;
+	setorigin(self, arm.origin);
+	truck.weapon1 = self;
+	self.classname = "weapon_mg";
+	setmodel(self, "progs/browning.mdl");
+
+	self = truck;
+}
+
 void() spawn_monster_truck =
 {
 	//body with wheels model
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
 	self.flags = FL_VEHICLE + FL_MONSTER;
-	setmodel(self, "progs/mini_truck.mdl");
-	setsize(self, '-8 -8 28', '8 8 36');
+	if (self.style) { //full scale
+		setmodel(self, "progs/truck.mdl");
+		setsize(self, '-16 -16 28', '16 16 42'); }
+	else {
+		setmodel(self, "progs/mini_truck.mdl");
+		setsize(self, '-8 -8 28', '8 8 36'); }
+	
 	self.classname = "monster_truck";
 	self.angles.y = self.angles.y;
 
@@ -1305,17 +1253,20 @@ void() spawn_monster_truck =
 	//spawn_truck_bed();
 	//spawn_truck_front();
 	//gunner
-	//if (self.spawnflags & I_AM_TURRET) {
-		spawn_truck_gunner();
-		spawn_truck_passenger();
-		//}
-
 };
 
 void() monster_truck =
 {
-	precache_model("progs/mini_truck.mdl");
+	if !(self.style) precache_model("progs/mini_truck.mdl");
+	else precache_model("progs/truck.mdl");
+	precache_model("progs/driving_ranger.mdl");
+	if !(self.skin) self.skin = 2;
 	spawn_monster_truck();
+	if (self.spawnflags & I_AM_TURRET) {
+		spawn_truck_gunner();
+		spawn_truck_passenger();
+		spawn_truck_mg();
+	}
 }
 
 void() rohack = {
@@ -1401,12 +1352,17 @@ void() truck_blocked =
 
 void() func_truck =
 {
-	precache_model("progs/truck.bsp");
+	if (self.owner.style) {
+		precache_model("progs/truck.bsp");
+		setmodel(self, "progs/truck.bsp"); }
+	else {
+		precache_model("progs/mini_truck.bsp");
+		setmodel(self, "progs/mini_truck.bsp");
+ }
 	self.solid = SOLID_BSP;
 	self.movetype = MOVETYPE_PUSH;
 	self.flags = FL_FLY;
 	self.view_ofs = '0 0 0';
-	setmodel(self, "progs/truck.bsp");
 	setorigin(self, self.owner.origin + self.view_ofs - self.owner.view_ofs);
 	self.classname = "func_truck";
 	self.touch = truck_touch;
