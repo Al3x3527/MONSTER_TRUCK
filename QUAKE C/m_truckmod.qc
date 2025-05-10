@@ -616,6 +616,7 @@ void(entity truck) spawn_truck_driver =
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
 	self.health = 1; //triggers doors
+	self.th_die = PlayerDie;
 	setorigin(self, truck.origin + self.view_ofs); //fix next truck think
 	self = player;
 }
@@ -1069,6 +1070,7 @@ void() spawn_truck_gunner =
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
 	self.health = 1;
+	self.th_die = PlayerDie;
 	if (truck.style) {
 		self.view_ofs_x *= 2;
 		self.view_ofs_y *= 2;
@@ -1095,6 +1097,7 @@ void() spawn_truck_passenger =
 	self.solid = SOLID_TRIGGER;
 	self.movetype = MOVETYPE_FLY;
 	self.health = 1;
+	self.th_die = PlayerDie;
 	setorigin(self, truck.origin + self.view_ofs);
 	if (truck.style) {
 		self.view_ofs_x *= 2;
@@ -1102,6 +1105,11 @@ void() spawn_truck_passenger =
 		self.view_ofs_z += 8;
 	}
 	self = truck;
+}
+
+void() ThrowWheel = {
+	ThrowGib("progs/gib_wheel.mdl", GibVelocityForHealth(80));
+	remove(self);
 }
 
 //physics wheels
@@ -1114,6 +1122,8 @@ void(float i) spawn_truck_wheel =
 	self.owner = truck.owner;
 	self.solid = SOLID_TRIGGER;
 	self.classname = "wheel";
+	self.health = 1;
+	self.th_die = ThrowWheel;
 	setsize(self, '-7 -7 -7', '7 7 7');
 	if !(i) {
 	truck.wheel1 = self;
@@ -1181,6 +1191,11 @@ void() spawn_truck_front =
 	self = truck;
 }
 
+void() ThrowSelf = {
+ThrowGib(self.model, GibVelocityForHealth(80));
+remove(self);
+}
+
 void() spawn_truck_mg =
 {	
 	precache_model("progs/browning.mdl");
@@ -1199,6 +1214,8 @@ void() spawn_truck_mg =
 	self.owner = truck.owner;
 	truck.weapon2 = self;
 	self.classname = "weapon_arm";
+	self.health = 1;
+	self.th_die = ThrowSelf;
 	setmodel(self, "progs/mg_ring.mdl");
 
 	self = gun;
@@ -1211,9 +1228,72 @@ void() spawn_truck_mg =
 	setorigin(self, arm.origin);
 	truck.weapon1 = self;
 	self.classname = "weapon_mg";
+	self.health = 1;
+	self.th_die = ThrowSelf;
 	setmodel(self, "progs/browning.mdl");
 
 	self = truck;
+}
+
+void() ThrowHood =
+{
+	entity gib;
+	gib = spawn();
+	local vector org;
+	local vector vel = GibVelocityForHealth(80);
+	local string gibname = "progs/gib_hood.mdl";
+
+	gib.angles = self.angles;
+	org = '40 0 20';
+	makevectors(self.angles);
+	org = org.x * v_forward + org.y * v_right + org.z * v_up + self.origin;
+	kaboom(org, 100, self, 0);
+
+	// gibs have to be thinking ballistic projectiles to pass through monsterclip/notrace
+	gib.owner = gib.trueowner = self;
+	gib.touch = projectile_touch_null;
+	gib.th_die = SUB_Remove;
+	gib.think = projectile_toss_think;
+	gib.nextthink = time;
+	gib.touch = projectile_touch_null;
+	gib.lifetime_finished = time + 6 + random() * 6;
+
+	setmodel(gib, gibname);
+	setsize(gib, VEC_ORIGIN, VEC_ORIGIN);
+	setorigin(gib, org);
+
+	gib.velocity = gib.oldvelocity = vel;
+	gib.avelocity = Vector(random(),random(),random()) * 600;
+
+	gib.movetype = MOVETYPE_BOUNCE;
+
+	gib.type = "hood";
+}
+
+void(entity ent) gib_ent =
+{
+	if !(alive(ent)) return;
+	ent.think = ent.th_die;
+	ent.nextthink = time + 0.02;
+	ent.health = -80;
+}
+
+void() truck_die =
+{
+	gib_ent(self.wheel1);
+	gib_ent(self.wheel2);
+	gib_ent(self.wheel3);
+	gib_ent(self.wheel4);
+	gib_ent(self.driver.driver);
+	gib_ent(self.passenger);
+	gib_ent(self.turret);
+	gib_ent(self.weapon1);
+	gib_ent(self.weapon2);
+	gib_ent(self.brushcollider);
+	setmodel(self, "progs/gib_chassis.mdl");
+	//fall with physics
+	ThrowHood();
+	kaboom(self.origin, 100, self, 0);
 }
 
 void() spawn_monster_truck =
@@ -1253,13 +1333,20 @@ void() spawn_monster_truck =
 	//spawn_truck_bed();
 	//spawn_truck_front();
 	//gunner
+	self.health = 100;
+	self.th_die = truck_die;
 };
 
 void() monster_truck =
 {
 	if !(self.style) precache_model("progs/mini_truck.mdl");
 	else precache_model("progs/truck.mdl");
+
 	precache_model("progs/driving_ranger.mdl");
+	precache_model("progs/gib_chassis.mdl");
+	precache_model("progs/gib_wheel.mdl");
+	precache_model("progs/gib_hood.mdl");
+
 	if !(self.skin) self.skin = 2;
 	spawn_monster_truck();
 	if (self.spawnflags & I_AM_TURRET) {
@@ -1350,6 +1437,11 @@ void() truck_blocked =
 	*/
 }
 
+void() func_truck_die =
+{
+	gib_ent(self.owner);
+}
+
 void() func_truck =
 {
 	if (self.owner.style) {
@@ -1369,6 +1461,8 @@ void() func_truck =
 	self.blocked = truck_blocked;
 	self.speed = 1;
 	self.think = SUB_Null;
+	self.health = 100;
+	self.th_die = func_truck_die;
 }
 
 void() pester = {
