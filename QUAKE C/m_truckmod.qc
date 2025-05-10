@@ -1294,6 +1294,8 @@ void() truck_die =
 	//fall with physics
 	ThrowHood();
 	kaboom(self.origin, 100, self, 0);
+	self.touch = SUB_Null;
+	self.skin = 13;
 }
 
 void() spawn_monster_truck =
@@ -1440,7 +1442,13 @@ void() truck_blocked =
 void() func_truck_die =
 {
 	gib_ent(self.owner);
+	self.touch = SUB_Null;
 }
+
+void(entity attacker, float damage) func_truck_pain =
+{
+
+};
 
 void() func_truck =
 {
@@ -1453,7 +1461,7 @@ void() func_truck =
  }
 	self.solid = SOLID_BSP;
 	self.movetype = MOVETYPE_PUSH;
-	self.flags = FL_FLY;
+	self.flags = FL_FLY; //can be blocked by world
 	self.view_ofs = '0 0 0';
 	setorigin(self, self.owner.origin + self.view_ofs - self.owner.view_ofs);
 	self.classname = "func_truck";
@@ -1462,7 +1470,10 @@ void() func_truck =
 	self.speed = 1;
 	self.think = SUB_Null;
 	self.health = 100;
+	self.max_health = self.health;
+	self.takedamage = DAMAGE_YES;
 	self.th_die = func_truck_die;
+	self.th_pain = func_truck_pain;
 }
 
 void() pester = {
