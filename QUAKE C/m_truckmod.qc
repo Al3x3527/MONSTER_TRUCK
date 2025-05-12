@@ -1313,7 +1313,7 @@ void() spawn_monster_truck =
 	self.movetype = MOVETYPE_FLY;
 	self.flags = FL_VEHICLE + FL_MONSTER;
 	if (self.style) { //full scale
-		setmodel(self, "progs/mini_truck.mdl");
+		setmodel(self, "progs/big_truck.mdl");
 		setsize(self, '-16 -16 28', '16 16 42'); }
 	else {
 		setmodel(self, "progs/mini_truck.mdl");
@@ -1350,7 +1350,7 @@ void() spawn_monster_truck =
 void() monster_truck =
 {
 	if !(self.style) precache_model("progs/mini_truck.mdl");
-	else precache_model("progs/mini_truck.mdl");
+	else precache_model("progs/big_truck.mdl");
 
 	precache_model("progs/driving_ranger.mdl");
 	precache_model("progs/gib_chassis.mdl");
