@@ -811,12 +811,18 @@ void() truck_drive = [ $forward1, truck_drive ]
 
 	if (self.walkframe > 1)
 		self.walkframe = 0;
-	if !(direction)
+	if !(direction){
 		self.frame = $forward1 + self.walkframe;
-	else if (direction == 1)
+		if (self.driver) self.driver.driver.frame = 0;
+		}
+	else if (direction == 1) {
 		self.frame = $right1 + self.walkframe;
-	else 
+		if (self.driver) self.driver.driver.frame = 2;
+		}
+	else {
 		self.frame = $left1 + self.walkframe;
+		if (self.driver) self.driver.driver.frame = 1;
+		}
 	if (dist)
 		self.walkframe = self.walkframe + 1;
 	local entity truck = self;
@@ -989,6 +995,7 @@ void() gunner_find_enemy =
 		if (self.classname != "truck_gunner") { dprint(self.classname); dprint("\n"); }
 		if ((m.flags & FL_MONSTER)
 		&& (m != self.owner)
+		&& (m != self.owner.owner)
 		&& alive(m)
 		&& (visible(m))
 		&& (range(m) < 3)) {
@@ -1022,6 +1029,7 @@ void() gunner_choose_yaw =
 	ChangeYaw();
 
 	if (truck.weapon2) truck.weapon2.v_angle = self.v_angle;
+	if (self.nextthink < time) self.nextthink = time + 0.1;
 }
 
 void() gunner_check_atk =
@@ -1305,7 +1313,7 @@ void() spawn_monster_truck =
 	self.movetype = MOVETYPE_FLY;
 	self.flags = FL_VEHICLE + FL_MONSTER;
 	if (self.style) { //full scale
-		setmodel(self, "progs/truck.mdl");
+		setmodel(self, "progs/mini_truck.mdl");
 		setsize(self, '-16 -16 28', '16 16 42'); }
 	else {
 		setmodel(self, "progs/mini_truck.mdl");
@@ -1342,7 +1350,7 @@ void() spawn_monster_truck =
 void() monster_truck =
 {
 	if !(self.style) precache_model("progs/mini_truck.mdl");
-	else precache_model("progs/truck.mdl");
+	else precache_model("progs/mini_truck.mdl");
 
 	precache_model("progs/driving_ranger.mdl");
 	precache_model("progs/gib_chassis.mdl");
