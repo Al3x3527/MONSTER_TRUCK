@@ -597,6 +597,11 @@ void() PutClientInServer =
 	self.effects = 0;
 	self.enemy = world;
 
+	// Setup cutscene stuff.  Legacy code from Zerstorer. --dumptruck_ds
+	self.script_count = 2;
+	self.script_delay = 1;
+	self.script_time = 0;
+
 	DecodeLevelParms();
 	SetChangeParms();
 	W_ResetWeaponState();
@@ -649,6 +654,10 @@ void() PutClientInServer =
 // oh, this is a hack!
 	setmodel (self, "progs/eyes.mdl");
 	modelindex_eyes = self.modelindex;
+
+	setmodel(self, "progs/s_null.spr");     // Drake -- dumptruck_ds
+	// setmodel (self, "progs/null_256.spr");     // Drake -- dumptruck_ds
+	mindex_inviso = self.modelindex;
 
 	setmodel (self, "progs/player.mdl");
 	modelindex_player = self.modelindex;

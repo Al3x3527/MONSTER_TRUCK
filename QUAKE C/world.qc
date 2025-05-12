@@ -148,6 +148,7 @@ void() main =
 	precache_file2 ("maps/dm4.bsp");
 	precache_file2 ("maps/dm5.bsp");
 	precache_file2 ("maps/dm6.bsp");
+
 }
 
 
@@ -358,6 +359,8 @@ void() worldspawn =
 
 	precache_model ("progs/player.mdl");
 	precache_model ("progs/eyes.mdl");
+	precache_model("progs/s_null.spr");
+
 	precache_model ("progs/h_player.mdl");
 	precache_model ("progs/gib1.mdl");
 	precache_model ("progs/gib2.mdl");
@@ -380,7 +383,6 @@ void() worldspawn =
 	precache_model ("progs/backpack.mdl");
 
 	precache_model ("progs/zom_gib.mdl");
-	
 }
 
 void() StartFrame =

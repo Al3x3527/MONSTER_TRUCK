@@ -378,6 +378,19 @@ Called every frame before physics are run
 */
 void() SUB_PlayerPreThink =
 {
+	dprint("player prethink\n");
+
+	if (intermission || self.deadflag == DEAD_SPECTATING)
+	{
+		IntermissionThink();	// otherwise a button could be missed between
+		return;					// the think tics
+	}
+
+	if (self.view_ofs == '0 0 0')
+	{
+		Cutscene_Think();      // Check for cutscene stuff.
+		return;        // intermission or finale
+	}
 	//self.flyhack = self.velocity; //truckmod
 	if((self.groundentity) && !(self.flags & FL_ONGROUND)) self.flags += FL_ONGROUND;
 	if (initCleanup)
@@ -392,11 +405,6 @@ void() SUB_PlayerPreThink =
 		}
 	}
 
-	if (intermission || self.deadflag == DEAD_SPECTATING)
-	{
-		IntermissionThink();	// otherwise a button could be missed between
-		return;					// the think tics
-	}
 	makevectors(self.v_angle);		// is this still used
 									// lunaran: "yes"
 
@@ -458,7 +466,7 @@ Called every frame after physics are run
 */
 void() SUB_PlayerPostThink =
 {
-	if (intermission) return;
+	//if (intermission) return;
 
 	if (self.view_ofs == '0 0 0')
 		return;		// intermission or finale

@@ -1154,15 +1154,20 @@ void(float i) spawn_truck_wheel =
 	self = truck;
 }
 
-/*@PointCLass base(Monster) size(-32 - 32 18, 32 32 64) model(
+/*@PointCLass base(Monster) size(-32 -16 0, 32 16 42) model(
 	{ {
-		mdl_body -> {"path" : mdl_body, "skin" : skin}, {"path": "progs/mini_truck.mdl" , "skin" : skin}
+		mdl_body -> {"path" : mdl_body, "skin" : skin}, {"path": "progs/big_truck.mdl" , "skin" : skin}
 	} }
-) = monster_truck : "mini truck"
+) = monster_truck : "drivable truck"
 [
+	style(interger) : "set if not miniture" : 1
+	spawnflags(flags) = 
+	[
+	262144 : "Turret" : 1
+	]
 ]
 */
-
+/*
 void() spawn_truck_bed =
 {
 	local entity truck = self;
@@ -1198,6 +1203,7 @@ void() spawn_truck_front =
 	self.classname = "truck_collider";
 	self = truck;
 }
+*/
 
 void() ThrowSelf = {
 ThrowGib(self.model, GibVelocityForHealth(80));
@@ -1365,7 +1371,8 @@ void() monster_truck =
 		spawn_truck_mg();
 	}
 }
-
+/*
+MARKED FOR DELETION
 void() rohack = {
 	if (self.avelocity) {
 		self.flyhack = self.avelocity;
@@ -1386,6 +1393,7 @@ void() beSolid =
 	self.avelocity += '0 0 0';
 	self.nextthink = self.ltime + 0.05;
 }
+*/
 
 void() truck_blocked =
 {
@@ -1484,6 +1492,8 @@ void() func_truck =
 	self.th_pain = func_truck_pain;
 }
 
+/*
+MARKED FOR DELETION
 void() pester = {
 	self.velocity += '0 0 0';
 	self.avelocity += '0 0 0';
@@ -1562,3 +1572,4 @@ void() func_bob =
 {
 	self.use = bob1;
 }
+*/

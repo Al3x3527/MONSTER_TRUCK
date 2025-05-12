@@ -278,6 +278,7 @@ void(.string fld) SUB_UseTargetsByField =
 	{
 		curTgt = self.fld;
 		do	{
+			//dprint("usetargetsbyfield usenexttarget\n");
 			t = SUB_UseNextTarget( t, self.fld );
 			activator = act;
 			if (!t)
