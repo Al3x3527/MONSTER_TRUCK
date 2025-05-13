@@ -608,7 +608,7 @@ void(entity truck) spawn_truck_driver =
 
 	player.driver = pilot;
 	pilot.owner = truck.owner;
-	setmodel(self, "progs/driving_ranger.mdl");
+	setmodel(self, "progs/truck/driving_ranger.mdl");
 	setsize(self, '-10 -10 0', '10 10 30');
 	if (truck.style)
 		self.view_ofs = '10 -15 15';
@@ -1072,7 +1072,7 @@ void() spawn_truck_gunner =
 	truck.turret = gunner;
 	gunner.owner = truck.owner;
 	self.classname = "truck_gunner";
-	setmodel(self, "progs/driving_ranger.mdl");
+	setmodel(self, "progs/truck/driving_ranger.mdl");
 	self.frame = 3;
 	setsize(self, '-10 -10 0', '10 10 30');
 	self.view_ofs = '-30 0 23';
@@ -1100,7 +1100,7 @@ void() spawn_truck_passenger =
 
 	truck.passenger = shotgun;
 	shotgun.owner = truck.owner;
-	setmodel(self, "progs/driving_ranger.mdl");
+	setmodel(self, "progs/truck/driving_ranger.mdl");
 	setsize(self, '-10 -10 0', '10 10 30');
 	self.view_ofs = '5 7.5 7';
 	self.solid = SOLID_TRIGGER;
@@ -1118,7 +1118,7 @@ void() spawn_truck_passenger =
 
 void() ThrowWheel = {
 	//ThrowGib("progs/gib_wheel.mdl", GibVelocityForHealth(80)); Copper
-	ThrowGib("progs/gib_wheel.mdl", 80);
+	ThrowGib("progs/truck/gib_wheel.mdl", 80);
 	remove(self);
 }
 
@@ -1209,8 +1209,8 @@ remove(self);
 
 void() spawn_truck_mg =
 {	
-	precache_model("progs/browning.mdl");
-	precache_model("progs/mg_ring.mdl");
+	precache_model("progs/truck/browning.mdl");
+	precache_model("progs/truck/mg_ring.mdl");
 	local entity truck = self;
 	local entity gun = spawn();
 	local entity arm = spawn();
@@ -1227,7 +1227,7 @@ void() spawn_truck_mg =
 	self.classname = "weapon_arm";
 	self.health = 1;
 	self.th_die = ThrowSelf;
-	setmodel(self, "progs/mg_ring.mdl");
+	setmodel(self, "progs/truck/mg_ring.mdl");
 
 	self = gun;
 	self.solid = SOLID_TRIGGER;
@@ -1241,7 +1241,7 @@ void() spawn_truck_mg =
 	self.classname = "weapon_mg";
 	self.health = 1;
 	self.th_die = ThrowSelf;
-	setmodel(self, "progs/browning.mdl");
+	setmodel(self, "progs/truck/browning.mdl");
 
 	self = truck;
 }
@@ -1252,7 +1252,7 @@ void() ThrowHood =
 	gib = spawn();
 	local vector org;
 	local vector vel = GibVelocityForHealth(80);
-	local string gibname = "progs/gib_hood.mdl";
+	local string gibname = "progs/truck/gib_hood.mdl";
 
 	gib.angles = self.angles;
 	org = '40 0 20';
@@ -1301,7 +1301,7 @@ void() truck_die =
 	gib_ent(self.weapon1);
 	gib_ent(self.weapon2);
 	gib_ent(self.brushcollider);
-	setmodel(self, "progs/gib_chassis.mdl");
+	setmodel(self, "progs/truck/gib_chassis.mdl");
 	//fall with physics
 	ThrowHood();
 	kaboom(self.origin, 100, self, 0);
@@ -1316,10 +1316,10 @@ void() spawn_monster_truck =
 	self.movetype = MOVETYPE_FLY;
 	self.flags = FL_VEHICLE + FL_MONSTER;
 	if (self.style) { //full scale
-		setmodel(self, "progs/big_truck.mdl");
+		setmodel(self, "progs/truck/big_truck.mdl");
 		setsize(self, '-16 -16 28', '16 16 42'); }
 	else {
-		setmodel(self, "progs/mini_truck.mdl");
+		setmodel(self, "progs/truck/mini_truck.mdl");
 		setsize(self, '-8 -8 28', '8 8 36'); }
 	
 	self.classname = "monster_truck";
@@ -1352,13 +1352,13 @@ void() spawn_monster_truck =
 
 void() monster_truck =
 {
-	if !(self.style) precache_model("progs/mini_truck.mdl");
-	else precache_model("progs/big_truck.mdl");
+	if !(self.style) precache_model("progs/truck/mini_truck.mdl");
+	else precache_model("progs/truck/big_truck.mdl");
 
-	precache_model("progs/driving_ranger.mdl");
-	precache_model("progs/gib_chassis.mdl");
-	precache_model("progs/gib_wheel.mdl");
-	precache_model("progs/gib_hood.mdl");
+	precache_model("progs/truck/driving_ranger.mdl");
+	precache_model("progs/truck/gib_chassis.mdl");
+	precache_model("progs/truck/gib_wheel.mdl");
+	precache_model("progs/truck/gib_hood.mdl");
 
 	if !(self.skin) self.skin = 2;
 	spawn_monster_truck();
@@ -1464,11 +1464,11 @@ void(entity attacker, float damage) func_truck_pain =
 void() func_truck =
 {
 	if (self.owner.style) {
-		precache_model("progs/truck.bsp");
-		setmodel(self, "progs/truck.bsp"); }
+		precache_model("progs/truck/truck.bsp");
+		setmodel(self, "progs/truck/truck.bsp"); }
 	else {
-		precache_model("progs/mini_truck.bsp");
-		setmodel(self, "progs/mini_truck.bsp");
+		precache_model("progs/truck/mini_truck.bsp");
+		setmodel(self, "progs/truck/mini_truck.bsp");
  }
 	self.solid = SOLID_BSP;
 	self.movetype = MOVETYPE_PUSH;
