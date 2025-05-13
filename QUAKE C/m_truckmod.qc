@@ -971,7 +971,8 @@ void() W_Fire_Turret =
 	makevectors(v);
 	dir = v_forward;
 	org = self.origin;
-	launch_nail(org, v_forward * 1996);
+	//launch_nail(org, v_forward * 1996); copper
+	launch_spike(org, v_forward);
 	self.attack_finished += 0.09;
 }
 
@@ -1116,7 +1117,8 @@ void() spawn_truck_passenger =
 }
 
 void() ThrowWheel = {
-	ThrowGib("progs/gib_wheel.mdl", GibVelocityForHealth(80));
+	//ThrowGib("progs/gib_wheel.mdl", GibVelocityForHealth(80)); Copper
+	ThrowGib("progs/gib_wheel.mdl", 80);
 	remove(self);
 }
 
@@ -1200,7 +1202,8 @@ void() spawn_truck_front =
 }
 
 void() ThrowSelf = {
-ThrowGib(self.model, GibVelocityForHealth(80));
+//ThrowGib(self.model, GibVelocityForHealth(80)); Copper
+ThrowGib(self.model, 80);
 remove(self);
 }
 
@@ -1484,6 +1487,7 @@ void() func_truck =
 	self.th_pain = func_truck_pain;
 }
 
+/*
 void() pester = {
 	self.velocity += '0 0 0';
 	self.avelocity += '0 0 0';
@@ -1562,3 +1566,4 @@ void() func_bob =
 {
 	self.use = bob1;
 }
+*/

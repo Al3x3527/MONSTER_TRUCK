@@ -1,999 +1,503 @@
-//
-// ================================================================
-//
-// Setup light animation tables. 'a' is total darkness, 'z' is maxbright.
-	// you know what's cool?  arrays.
-// 0 normal
-string light0 = "m";
-// 1 FLICKER (first variety)
-string light1 = "mmnmmommommnonmmonqnmmo";
-// 2 SLOW STRONG PULSE
-string light2 = "abcdefghijklmnopqrstuvwxyzyxwvutsrqponmlkjihgfedcba";
-// 3 CANDLE (first variety)
-string light3 = "mmmmmaaaaammmmmaaaaaabcdefgabcdefg";
-// 4 FAST STROBE
-string light4 = "mamamamamama";
-// 5 GENTLE PULSE 1
-string light5 = "jklmnopqrstuvwxyzyxwvutsrqponmlkj";
-// 6 FLICKER (second variety)
-string light6 = "nmonqnmomnmomomno";
-// 7 CANDLE (second variety)
-string light7 = "mmmaaaabcdefgmmmmaaaammmaamm";
-// 8 CANDLE (third variety)
-string light8 = "mmmaaammmaaammmabcdefaaaammmmabcdefmmmaaaa";
-// 9 SLOW STROBE (fourth variety)
-string light9 = "aaaaaaaazzzzzzzz";
-// 10 FLUORESCENT FLICKER
-string light10 = "mmamammmmammamamaaamammma";
-// 11 SLOW PULSE TO BLACK
-string light11 = "abcdefghijklmnopqrrqponmlkjihgfedcba";
-// styles 32-62 are assigned by the light program for switchable lights
+/*========================================
+lights.qc taken from c0burn's Slipgate mod -- dumptruck_ds
+========================================*/
 
-string light_off = "a";
+float START_OFF		= 1;
+float FADE_IN_OUT	= 2;
+float SILENT_TORCH = 4; // for silent torch -- dumptruck_ds
 
+/*QUAKED info_null (0 0.5 0) (-4 -4 -4) (4 4 4) X X X X X X X X NOT_ON_EASY NOT_ON_NORMAL NOT_ON_HARD_OR_NIGHTMARE NOT_IN_DEATHMATCH NOT_IN_COOP NOT_IN_SINGLEPLAYER X NOT_ON_HARD_ONLY NOT_ON_NIGHTMARE_ONLY
 
-/*FGD
-@baseclass base() color(255 255 80) size(-8 -8 -8, 8 8 8) = Light [
-	light(integer) : "Brightness" : 300
-	_color(string) : "Color" : "1 1 1"
-	wait(string) : "Fade distance multiplier" : "1"
-	mangle(string) : "Spotlight aim (yaw pitch roll, neg. pitch is down)"
-	angle(integer) : "Spotlight cone angle"
-	_softangle(integer) : "Spotlight inner cone angle"
-	_dirt(integer) : "Override dirt"
-	message(string) : "override the style string directly for the assigned style (clashes will overwrite each other)"
-	target(string) : "Entity to aim at"
-	delay(choices) : "Attenuation" =
-	[
-		0 : "Linear falloff (Default)"
-		1 : "Inverse distance falloff"
-		2 : "Inverse distance squared"
-		3 : "No falloff"
-		4 : "Local minlight"
-		5 : "Inverse distance squared B"
-	]
-	style(Choices) : "Appearance" : 0 =
-	[
-		0 : "Normal"
-		10: "Fluorescent flicker"
-		2 : "Slow, strong pulse"
-		11: "Slow pulse, black"
-		5 : "Gentle pulse, no black"
-		1 : "Flicker A"
-		6 : "Flicker B"
-		3 : "Candle A"
-		7 : "Candle B"
-		8 : "Candle C"
-		4 : "Fast strobe"
-		9 : "Slow strobe"
-	]
-]
-@baseclass base(Light, Targetname) = LightTriggerable [
-	spawnflags(flags) = [
-		1 : "Start off" : 0
-	]
-]
-@baseclass base() = Flame [
-	volume(string) : "Crackle Volume" : "1"
-	distance(choices) : "Crackle Range" : 0 =
-	[
-		0 : "Ambient"
-		1 : "Monster Idle"
-		2 : "Monster Bark"
-		3 : "Global (plz no)"
-	]
-	spawnflags(flags) = [
-		2 : "Silent" : 0
-	]
-]
+Used as a positional target for spotlights, etc.
 */
-
-//
-// ================================================================
-//
-
-string( float st ) GetLightStyle =
+void() info_null =
 {
-	if (st == 1) return light1;
-	if (st == 2) return light2;
-	if (st == 3) return light3;
-	if (st == 4) return light4;
-	if (st == 5) return light5;
-	if (st == 6) return light6;
-	if (st == 7) return light7;
-	if (st == 8) return light8;
-	if (st == 9) return light9;
-	if (st == 10) return light10;
-	if (st == 11) return light11;
-/*	if (st == 12) return light12;
-	if (st == 13) return light13;
-	if (st == 14) return light14;
-	if (st == 15) return light15;
-	if (st == 16) return light16;
-	if (st == 17) return light17;
-	if (st == 18) return light18;*/
-	
-	if (icantsee)
-		return "z";
-	return light0;
-}
+	if (SUB_Inhibit ())  // new spawnflags for all entities -- iw
+		return;
 
-void() InitLightStyles =
+	remove(self);
+};
+
+/*QUAKED info_notnull (0 0.5 0) (-4 -4 -4) (4 4 4) X X X X X X X X NOT_ON_EASY NOT_ON_NORMAL NOT_ON_HARD_OR_NIGHTMARE NOT_IN_DEATHMATCH NOT_IN_COOP NOT_IN_SINGLEPLAYER X NOT_ON_HARD_ONLY NOT_ON_NIGHTMARE_ONLY
+
+Never used in the or
+*/
+void() info_notnull =
 {
-	lightstyle(0, light0);
-	lightstyle(1, light1);
-	lightstyle(2, light2);
-	lightstyle(3, light3);
-	lightstyle(4, light4);
-	lightstyle(5, light5);
-	lightstyle(6, light6);
-	lightstyle(7, light7);
-	lightstyle(8, light8);
-	lightstyle(9, light9);
-	lightstyle(10, light10);
-	lightstyle(11, light11);
-/*	lightstyle(12, light12);
-	lightstyle(13, light13);
-	lightstyle(14, light14);
-	lightstyle(15, light15);
-	lightstyle(16, light16);
-	lightstyle(17, light17);
-	lightstyle(18, light18);*/
-	
-	// 63 testing
-	//lightstyle(63, "a");
-}
+	if (SUB_Inhibit ())  // new spawnflags for all entities -- iw
+		return;
+};
 
+/*==========
+lightstyle_lookup
+==========*/
+string(float num) lightstyle_lookup =
+{
+	switch (num)
+	{
+		// 0 normal
+		case 0:
+			return "m";
+			break;
+		// 1 FLICKER (first variety)
+		case 1:
+			return "mmnmmommommnonmmonqnmmo";
+			break;
+		// 2 SLOW STRONG PULSE
+		case 2:
+			return "abcdefghijklmnopqrstuvwxyzyxwvutsrqponmlkjihgfedcba";
+			break;
+		// 3 CANDLE (first variety)
+		case 3:
+			return "mmmmmaaaaammmmmaaaaaabcdefgabcdefg";
+			break;
+		// 4 FAST STROBE
+		case 4:
+			return "mamamamamama";
+			break;
+		// 5 GENTLE PULSE 1
+		case 5:
+			return "jklmnopqrstuvwxyzyxwvutsrqponmlkj";
+			break;
+		// 6 FLICKER (second variety)
+		case 6:
+			return "nmonqnmomnmomomno";
+			break;
+		// 7 CANDLE (second variety)
+		case 7:
+			return "mmmaaaabcdefgmmmmaaaammmaamm";
+			break;
+		// 8 CANDLE (third variety)
+		case 8:
+			return "mmmaaammmaaammmabcdefaaaammmmabcdefmmmaaaa";
+			break;
+		// 9 SLOW STROBE (fourth variety)
+		case 9:
+			return "aaaaaaaazzzzzzzz";
+			break;
+		// 10 FLUORESCENT FLICKER
+		case 10:
+			return "mmamammmmammamamaaamammma";
+			break;
+		// 11 SLOW PULSE NOT FADE TO BLACK
+		case 11:
+			return "abcdefghijklmnopqrrqponmlkjihgfedcba";
+			break;
+		// 12 BLINK OFF / ON (can be synced with animated textures, e.g. +0light and +1light)
+		case 12:
+			return "aamm";	// textures animate at 5fps but lights are 10fps...
+			break;
+		// DEFAULT
+		default:
+			return "a";
+			break;
+	}
+};
+
+/*==========
+setup_lightstyles
+
+Setup light animation tables. 'a' is total darkness, 'z' is maxbright.
+Styles 32+ are assigned by the light program for switchable lights.
+==========*/
+void() setup_lightstyles =
+{
+	for (float i = 0; i <= 12; i++)
+	{
+		lightstyle(i, lightstyle_lookup(i));
+	}
+};
+
+/*==========
+lightstyle_fade_lookup
+==========*/
+string(float num) lightstyle_fade_lookup =
+{
+	switch (num)
+	{
+		case 0:
+			return "a";
+			break;
+		case 1:
+			return "b";
+			break;
+		case 2:
+			return "c";
+			break;
+		case 3:
+			return "d";
+			break;
+		case 4:
+			return "e";
+			break;
+		case 5:
+			return "f";
+			break;
+		case 6:
+			return "g";
+			break;
+		case 7:
+			return "h";
+			break;
+		case 8:
+			return "i";
+			break;
+		case 9:
+			return "j";
+			break;
+		case 10:
+			return "k";
+			break;
+		case 11:
+			return "l";
+			break;
+		case 12:
+			return "m";
+			break;
+		default:
+			error("count out of range\n");
+			break;
+	}
+};
+
+/*==========
+light_fade_in
+==========*/
+void() light_fade_in =
+{
+	if (self.count < 0)
+		self.count = 0;
+	if (self.count > 12)
+		self.count = 12;
+
+	lightstyle(self.style, lightstyle_fade_lookup(self.count));
+	self.count = self.count + 1;
+	if (self.count > 12)
+		return;
+
+	self.think = light_fade_in;
+	self.nextthink = time + self.speed;
+};
+
+/*==========
+light_fade_out
+==========*/
+void() light_fade_out =
+{
+	if (self.count < 0)
+		self.count = 0;
+	if (self.count > 12)
+		self.count = 12;
+
+	lightstyle(self.style, lightstyle_fade_lookup(self.count));
+	self.count = self.count - 1;
+	if (self.count < 0)
+		return;
+
+	self.think = light_fade_out;
+	self.nextthink = time + self.speed;
+};
+
+/*==========
+light_use
+
+using a light will turn it on and off
+==========*/
 void() light_use =
 {
-	//dprint("light_use\n");
 	if (self.spawnflags & START_OFF)
 	{
-		if (self.message != string_null)
-			lightstyle(self.style, self.message);
-		else
-			lightstyle(self.style, GetLightStyle(self.oldstyle));
 		self.spawnflags = self.spawnflags - START_OFF;
-		//dprint("turning light on\n");
+		if (self.spawnflags & FADE_IN_OUT && !self.style2)
+			light_fade_in();
+		else
+			lightstyle(self.style, lightstyle_lookup(self.style2));
 	}
 	else
 	{
-		lightstyle(self.style, light_off);
-		self.spawnflags = self.spawnflags | START_OFF;
-		//dprint("turning light off\n");
-	}
-}
-
-void(entity b, float opacity) bmodel_lightstyle =
-{
-	if (sandyMadeThis) return;
-	if (!b.style && !b.switchshadstyle) return;
-	
-	float a = zeroconvertdefault(b.alpha, 1);
-	float f;
-
-	// 'alpha' could be set by mapper or target_fade, 0 is invisible
-	//		1 blocks all light, 0 admits all
-	// 'opacity' is like positional alpha: is the bmodel visible or hidden? how far open is the door? etc
-	//		1 blocks all light, 0 admits all
-	
-	// stash for future changes in alpha
-	if (opacity == 0) b.alpha2 = -1;
-	else b.alpha2 = opacity;
-	
-	if (b.customflags & CFL_INVLIGHT)
-		opacity = 1 - opacity;
-	
-	// 0 for either will override the other and admit light, so we multiply
-	// finally, invert so 0 (brightest) becomes a high value
-	f = 1 - opacity * a;
-
-	string l = light_str(f);
-
-	if (b.style)
-		lightstyle(b.style, l);
-	if (b.switchshadstyle)
-		lightstyle(b.switchshadstyle, l);
-}
-
-string(float f) light_str =
-{
-	float bright = floor(f * 12 + 0.5);
-	
-	if (bright <= 0 ) return "a";
-	if (bright >= 12) return "m";
-
-	if (bright == 1 ) return "b";
-	if (bright == 2 ) return "c";
-	if (bright == 3 ) return "d";
-	if (bright == 4 ) return "e";
-	if (bright == 5 ) return "f";
-	if (bright == 6 ) return "g";
-	if (bright == 7 ) return "h";
-	if (bright == 8 ) return "i";
-	if (bright == 9 ) return "j";
-	if (bright == 10) return "k";
-	if (bright == 11) return "l";
-	return "a";
-}
-
-// Lights with "count" will gradually change brightness each time they're triggered, reaching normal brightness or complete darkness after 'count' triggers.
-void() light_inc_use =
-{
-	if (self.spawnflags & START_OFF)
-	{
-		if (self.cnt == self.count) return;
-		self.cnt = self.cnt + 1;
-	}
-	else
-	{
-		if (self.cnt == 0) return;
-		self.cnt = self.cnt - 1;
-	}
-	
-	lightstyle(self.style, light_str(self.cnt / self.count));
-}
-
-void() light_message =
-{
-	if (self.message != string_null)
-	{
-		if (self.oldstyle > 11)
-			lightstyle(self.oldstyle, self.message);
-		else if (self.style > 11)
-			lightstyle(self.style, self.message);
+		self.spawnflags = self.spawnflags + START_OFF;
+		if (self.spawnflags & FADE_IN_OUT && !self.style2)
+			light_fade_out();
 		else
-			dprint5("\bwarning:\b light at ", vtos(self.origin), " with message ", self.message, " but no style # set\n");
+			lightstyle(self.style, "a");
 	}
-}
+};
 
-void() light_oldstyle =
-{
-	if (self.style >= 32)
-	{
-		if (self.count > 0)
-		{
-			self.use = light_inc_use;
-			if (self.spawnflags & START_OFF)
-			{
-				lightstyle(self.style, light_off);
-				self.cnt = 0;
-			}
-			else
-			{
-				lightstyle(self.style, GetLightStyle(self.oldstyle));
-				self.cnt = self.count;
-			}
-			return;
-		}
-		
-		self.use = light_use;
-		if (self.spawnflags & START_OFF)
-			lightstyle(self.style, light_off);
-		else
-			lightstyle(self.style, GetLightStyle(self.oldstyle));
-	}
-}
+/*QUAKED light (0 1 0) (-8 -8 -8) (8 8 8) START_OFF FADE_IN_OUT X X X X X X NOT_ON_EASY NOT_ON_NORMAL NOT_ON_HARD_OR_NIGHTMARE NOT_IN_DEATHMATCH NOT_IN_COOP NOT_IN_SINGLEPLAYER X NOT_ON_HARD_ONLY NOT_ON_NIGHTMARE_ONLY
 
-/*QUAKED light (0 .75 0) (-8 -8 -8) (8 8 8) START_OFF
-Non-displayed light. If targeted, it will toggle between on or off. 
+Light
 
-"start_off"	starts off until triggered
+==========
+Spawnflags
+==========
+START_OFF - switchable lights only - light is off by default
+FADE_IN_OUT - switchable lights only - light fades in and out. can't be combined with animated lights.
 
-Keys:
-"light"		sets brightness (default: 300)
-"targetname"	entity name
-"mangle"	spotlight direction - the first # is yaw, 0 to 360 around Z. second # is pitch, 90 up to -90 down.
-"angle"		spotlight cone size
-"_softangle" spotlight inner cone size
-"wait"		scale the falloff distance.  N>1 will shorten range, n<1 will extend it
-"delay"		attenuation formula
-	0 = Linear, original id (default)
-	1 = 1/x attenuation formula
-	2 = 1/(x^2) attenuation formula
-	3 = No attenuation (light stays same brightness at any distance)
-"_color" "# # #" 0-255
-"style"
-    0 = normal
-    1 = flicker: "mmnmmommommnonmmonqnmmo"
-    2 = slow strong pulse: "abcdefghijklmnopqrstuvwxyzyxwvutsrqponmlkjihgfedcba"
-    3 = candle: "mmmmmaaaaammmmmaaaaaabcdefgabcdefg"
-    4 = fast strobe: "mamamamamama"
-    5 = slow pulse, no black: "jklmnopqrstuvwxyzyxwvutsrqponmlkj"
-    6 = flicker: "nmonqnmomnmomomno"
-    7 = candle: "mmmaaaabcdefgmmmmaaaammmaamm"
-    8 = candle2: "mmmaaammmaaammmabcdefaaaammmmabcdefmmmaaaa"
-    9 = slow strobe: "aaaaaaaazzzzzzzz"
-    10 = flourescent flicker: mmamammmmammamamaaamammma"
-    11 = slow pulse, fading to black: "abcdefghijklmnopqrrqponmlkjihgfedcba"
+==========
+Keys
+==========
+"light" "n"
+Set the light intensity. Negative values are also allowed and will cause the entity to subtract light cast by other entities. Default 300.
 
-    styles 32-62 are assigned by the light program for switchable lights 
-    (default: 0)
-"message"	override the style string directly for the assigned style (clashes will overwrite each other)
-*/
-/*FGD
-@PointClass base(LightTriggerable) = light : "Invisible light source" []
+"wait" "n"
+Scale the fade distance of the light by "n". Values of n > 1 make the light fade more quickly with distance, and values < 1 make the light fade more slowly (and thus reach further). Default 1.
+
+"delay" "n"
+Select an attenuation formaula for the light:
+0 => Linear attenuation (default)
+1 => 1/x attenuation
+2 => 1/(x^2) attenuation
+3 => No attenuation (same brightness at any distance)
+4 => "local minlight" - No attenuation and like minlight,
+it won't raise the lighting above it's light value.
+Unlike minlight, it will only affect surfaces within
+line of sight of the entity.
+5 => 1/(x^2) attenuation, but slightly more attenuated and
+without the extra bright effect that "delay 2" has
+near the source.
+
+"_falloff" "n"
+Sets the distance at which the light drops to 0, in map units.
+In this mode, "wait" is ignored and "light" only controls the brightness at the center of the light, and no longer affects the falloff distance.
+Only supported on linear attenuation (delay 0) lights currently.
+
+"_color" "r g b"
+Specify red(r), green(g) and blue(b) components for the colour of the light. RGB component values are between 0 and 255 (between 0 and 1 is also accepted). Default is white light ("255 255 255").
+
+"target" "name"
+Turns the light into a spotlight, with the direction of light being towards another entity with it�s "targetname" key set to "name".
+"mangle" "yaw pitch roll"
+Turns the light into a spotlight and specifies the direction of light using yaw, pitch and roll in degrees. Yaw specifies the angle around the Z-axis from 0 to 359 degrees and pitch specifies the angle from 90 (straight up) to -90 (straight down). Roll has no effect, so use any value (e.g. 0). Often easier than the "target" method.
+
+"angle" "n"
+Specifies the angle in degrees for a spotlight cone. Default 40.
+
+"_softangle" "n"
+Specifies the angle in degrees for an inner spotlight cone (must be less than the "angle" cone. Creates a softer transition between the full brightness of the inner cone to the edge of the outer cone. Default 0 (disabled).
+
+"targetname" "name"
+Turns the light into a switchable light, toggled by another entity targeting it�s name.
+
+"speed" "n"
+If the light is switchable and FADE_IN_OUT is set, the speed at which the light transitions. Default 0.1.
+
+"style" "n"
+Set the animated light style. Default 0.
+
+"style2" "n"
+Set the animated light style for a switchable light, because style will be overriden if a targetname is set. Default 0.
+
+"_anglescale" "n" | "_anglesense" "n"
+Sets a scaling factor for how much influence the angle of incidence of light on a surface has on the brightness of the surface. n must be between 0.0 and 1.0. Smaller values mean less attenuation, with zero meaning that angle of incidence has no effect at all on the brightness. Default 0.5.
+
+"_dirtscale" "n" | "_dirtgain" "n"
+Override the global "_dirtscale" or "_dirtgain" settings to change how this light is affected by dirtmapping (ambient occlusion). See descriptions of these keys in the worldspawn section.
+
+"_dirt" "n"
+Overrides the worldspawn setting of "_dirt" for this particular light. -1 to disable dirtmapping (ambient occlusion) for this light, making it illuminate the dirtmapping shadows. 1 to enable ambient occlusion for this light. Default is to defer to the worldspawn setting.
+
+"_deviance" "n"
+Split up the light into a sphere of randomly positioned lights within radius "n" (in world units). Useful to give shadows a wider penumbra. "_samples" specifies the number of lights in the sphere. The "light" value is automatically scaled down for most lighting formulas (except linear and non-additive minlight) to attempt to keep the brightness equal. Default is 0, do not split up lights.
+
+"_samples" "n"
+Number of lights to use for "_deviance". Default 16 (only used if "_deviance" is set).
+
+"_surface" "texturename"
+Makes surfaces with the given texture name emit light, by using this light as a template which is copied across those surfaces. Lights are spaced about 128 units (though possibly closer due to bsp splitting) apart and positioned 2 units above the surfaces.
+
+"_surface_offset" "n"
+Controls the offset lights are placed above surfaces for "_surface". Default 2.
+
+"_surface_spotlight" "n"
+For a surface light template (i.e. a light with "_surface" set), setting this to "1" makes each instance into a spotlight, with the direction of light pointing along the surface normal. In other words, it automatically sets "mangle" on each of the generated lights.
+
+"_project_texture" "texture"
+Specifies that a light should project this texture. The texture must be used in the map somewhere.
+
+"_project_mangle" "yaw pitch roll"
+Specifies the yaw/pitch/roll angles for a texture projection (overriding mangle).
+
+"_project_fov" "n"
+Specifies the fov angle for a texture projection. Default 90.
+
+"_bouncescale" "n"
+Scales the amount of light that is contributed by bounces. Default is 1.0, 0.0 disables bounce lighting for this light.
+
+"_sun" "n"
+Set to 1 to make this entity a sun, as an alternative to using the sunlight worldspawn keys. If the light targets an info_null entity, the direction towards that entity sets sun direction. The light itself is disabled, so it can be placed anywhere in the map.
+
+The following light properties correspond to these sunlight settings:
+light => _sunlight
+mangle => _sunlight_mangle
+deviance => _sunlight_penumbra
+_color => _sunlight_color
+_dirt => _sunlight_dirt
+_anglescale => _anglescale
 */
 void() light =
 {
-	light_message();
-	
-	if (self.targetname == string_null && !self.impulse)
-	{	// inert light
+	if (SUB_Inhibit ())  // new spawnflags for all entities -- iw
+		return;
+
+	// default speed for fading in/out
+	if (self.speed <= 0)
+		self.speed = 0.1;
+
+	// non-switchable light
+	if (!self.targetname)
+	{
 		remove(self);
 		return;
 	}
-	
-	light_oldstyle();
-}
 
-//============================================================================
-
-/*QUAKED light_fluoro (1 1 0) (-8 -8 -8) (8 8 8) START_OFF
-Non-displayed light. Makes steady fluorescent humming sound.
-
-Flags:
-"start_off"	starts off until triggered
-
-Keys:
-"light"		sets brightness (default: 300)
-"targetname"	entity name
-"mangle"	spotlight direction - the first # is yaw, 0 to 360 around Z. second # is pitch, 90 up to -90 down.
-"angle"		spotlight cone size
-"_softangle" spotlight inner cone size
-"wait"		scale the falloff distance.  N>1 will shorten range, n<1 will extend it
-"delay"		attenuation formula
-	0 = Linear, original id (default)
-	1 = 1/x attenuation formula
-	2 = 1/(x^2) attenuation formula
-	3 = No attenuation (light stays same brightness at any distance)
-"_color" "# # #" 0-255
-"style"
-    0 = normal
-    1 = flicker: "mmnmmommommnonmmonqnmmo"
-    2 = slow strong pulse: "abcdefghijklmnopqrstuvwxyzyxwvutsrqponmlkjihgfedcba"
-    3 = candle: "mmmmmaaaaammmmmaaaaaabcdefgabcdefg"
-    4 = fast strobe: "mamamamamama"
-    5 = slow pulse, no black: "jklmnopqrstuvwxyzyxwvutsrqponmlkj"
-    6 = flicker: "nmonqnmomnmomomno"
-    7 = candle: "mmmaaaabcdefgmmmmaaaammmaamm"
-    8 = candle2: "mmmaaammmaaammmabcdefaaaammmmabcdefmmmaaaa"
-    9 = slow strobe: "aaaaaaaazzzzzzzz"
-    10 = flourescent flicker: mmamammmmammamamaaamammma"
-    11 = slow pulse, fading to black: "abcdefghijklmnopqrrqponmlkjihgfedcba"
-
-    styles 32-62 are assigned by the light program for switchable lights 
-    (default: 0)
-"message"	override the style string directly for the assigned style (clashes will overwrite each other)
-*/
-/*FGD
-@PointClass base(LightTriggerable) = light_fluoro : "Humming fluorescent light source" []
-*/
-void() light_fluoro =
-{
+	// switchable light
 	if (self.style >= 32)
 	{
 		self.use = light_use;
 		if (self.spawnflags & START_OFF)
+		{
+			self.count = 0;
 			lightstyle(self.style, "a");
+		}
 		else
-			lightstyle(self.style, "m");
+		{
+			self.count = 12;
+			lightstyle(self.style, lightstyle_lookup(self.style2));
+		}
 	}
-	
-	precache_sound ("ambience/fl_hum1.wav");
-	ambientsound (self.origin, "ambience/fl_hum1.wav", 0.5, ATTN_STATIC);
-}
+};
 
-/*QUAKED light_fluorospark (1 1 0) (-8 -8 -8) (8 8 8)
-Non-displayed light. Default style is 10. Makes sparking, broken fluorescent sound.
+/*QUAKED light_fluoro (0 1 0) (-8 -8 -8) (8 8 8) START_OFF FADE_IN_OUT X X X X X X NOT_ON_EASY NOT_ON_NORMAL NOT_ON_HARD_OR_NIGHTMARE NOT_IN_DEATHMATCH NOT_IN_COOP NOT_IN_SINGLEPLAYER X NOT_ON_HARD_ONLY NOT_ON_NIGHTMARE_ONLY
 
-Keys:
-"light"		sets brightness (default: 300)
-"mangle"	spotlight direction - the first # is yaw, 0 to 360 around Z. second # is pitch, 90 up to -90 down.
-"angle"		spotlight cone size
-"_softangle" spotlight inner cone size
-"wait"		scale the falloff distance.  N>1 will shorten range, n<1 will extend it
-"delay"		attenuation formula
-	0 = Linear, original id (default)
-	1 = 1/x attenuation formula
-	2 = 1/(x^2) attenuation formula
-	3 = No attenuation (light stays same brightness at any distance)
-"_color" "# # #" 0-255
-"style"
-    0 = normal
-    1 = flicker: "mmnmmommommnonmmonqnmmo"
-    2 = slow strong pulse: "abcdefghijklmnopqrstuvwxyzyxwvutsrqponmlkjihgfedcba"
-    3 = candle: "mmmmmaaaaammmmmaaaaaabcdefgabcdefg"
-    4 = fast strobe: "mamamamamama"
-    5 = slow pulse, no black: "jklmnopqrstuvwxyzyxwvutsrqponmlkj"
-    6 = flicker: "nmonqnmomnmomomno"
-    7 = candle: "mmmaaaabcdefgmmmmaaaammmaamm"
-    8 = candle2: "mmmaaammmaaammmabcdefaaaammmmabcdefmmmaaaa"
-    9 = slow strobe: "aaaaaaaazzzzzzzz"
-    10 = flourescent flicker: mmamammmmammamamaaamammma"
-    11 = slow pulse, fading to black: "abcdefghijklmnopqrrqponmlkjihgfedcba"
-
-    styles 32-62 are assigned by the light program for switchable lights 
-    (default: 0)
-"message"	override the style string directly for the assigned style (clashes will overwrite each other)
+Non-displayed light.
+Makes steady fluorescent humming sound.
+See the "light" entity for a full description.
 */
-/*FGD
-@PointClass base(Light) = light_fluorospark : "Sparking flickering light source" []
+void() light_fluoro =
+{
+	if (SUB_Inhibit ())  // new spawnflags for all entities -- iw
+		return;
+
+	ambient_light_buzz();
+	light();
+};
+
+/*QUAKED light_fluorospark (0 1 0) (-8 -8 -8) (8 8 8) START_OFF FADE_IN_OUT X X X X X X NOT_ON_EASY NOT_ON_NORMAL NOT_ON_HARD_OR_NIGHTMARE NOT_IN_DEATHMATCH NOT_IN_COOP NOT_IN_SINGLEPLAYER X NOT_ON_HARD_ONLY NOT_ON_NIGHTMARE_ONLY
+
+Non-displayed light.
+Makes sparking, broken fluorescent sound.
+Can't be toggled.
+Default style is 10.
+See the "light" entity for a full description.
 */
 void() light_fluorospark =
 {
+	if (SUB_Inhibit ())  // new spawnflags for all entities -- iw
+		return;
+
 	if (!self.style)
 		self.style = 10;
+	ambient_flouro_buzz();
+	remove(self);
+};
 
-	precache_sound ("ambience/buzz1.wav");
-	ambientsound (self.origin, "ambience/buzz1.wav", 0.5, ATTN_STATIC);
-}
-
-/*QUAKED light_globe (1 1 0) (-12 -12 -12) (12 12 12)
-Sphere globe light.  Can't be triggered.
-
-Keys:
-"light"		sets brightness (default: 300)
-"mangle"	spotlight direction - the first # is yaw, 0 to 360 around Z. second # is pitch, 90 up to -90 down.
-"angle"		spotlight cone size
-"_softangle" spotlight inner cone size
-"wait"		scale the falloff distance.  N>1 will shorten range, n<1 will extend it
-"delay"		attenuation formula
-	0 = Linear, original id (default)
-	1 = 1/x attenuation formula
-	2 = 1/(x^2) attenuation formula
-	3 = No attenuation (light stays same brightness at any distance)
-"_color" "# # #" 0-255
-"style"
-    0 = normal
-    1 = flicker: "mmnmmommommnonmmonqnmmo"
-    2 = slow strong pulse: "abcdefghijklmnopqrstuvwxyzyxwvutsrqponmlkjihgfedcba"
-    3 = candle: "mmmmmaaaaammmmmaaaaaabcdefgabcdefg"
-    4 = fast strobe: "mamamamamama"
-    5 = slow pulse, no black: "jklmnopqrstuvwxyzyxwvutsrqponmlkj"
-    6 = flicker: "nmonqnmomnmomomno"
-    7 = candle: "mmmaaaabcdefgmmmmaaaammmaamm"
-    8 = candle2: "mmmaaammmaaammmabcdefaaaammmmabcdefmmmaaaa"
-    9 = slow strobe: "aaaaaaaazzzzzzzz"
-    10 = flourescent flicker: mmamammmmammamamaaamammma"
-    11 = slow pulse, fading to black: "abcdefghijklmnopqrrqponmlkjihgfedcba"
-
-    styles 32-62 are assigned by the light program for switchable lights 
-    (default: 0)
-"message"	override the style string directly for the assigned style (clashes will overwrite each other)
-*/
-/*FGD
-@PointClass base(Light) size(24 24 24) = light_globe : "Globe light" []
+/*QUAKED light_globe (0 1 0) (-8 -8 -8) (8 8 8) X X X X X X X X NOT_ON_EASY NOT_ON_NORMAL NOT_ON_HARD_OR_NIGHTMARE NOT_IN_DEATHMATCH NOT_IN_COOP NOT_IN_SINGLEPLAYER X NOT_ON_HARD_ONLY NOT_ON_NIGHTMARE_ONLY
+Sphere globe light.
+Can't be toggled.
+See the "light" entity for a full description.
 */
 void() light_globe =
 {
-	precache_model ("progs/s_light.spr");
-	setmodel (self, "progs/s_light.spr");
-	makestatic (self);
-}
+	if (SUB_Inhibit ())  // new spawnflags for all entities -- iw
+		return;
 
-void() FireAmbient =
-{
-	if (self.spawnflags & 2) return;	// silent spawnflag
-	precache_sound ("ambience/fire1.wav");
-// attenuate fast
-	ambientsound (self.origin, "ambience/fire1.wav", 0.5, ATTN_STATIC);
-}
+	precache_model("progs/s_light.spr");
+	setmodel(self, "progs/s_light.spr");
+	makestatic(self);
+};
 
-/*QUAKED light_torch_small_walltorch (1 1 0) (-4 -4 -12) (4 4 20)
-Short wall torch. Makes crackly torch sound.
-
-Flags:
-"silent"	no ambient noise
-
-Keys:
-"light"		sets brightness (default: 300)
-"mangle"	spotlight direction - the first # is yaw, 0 to 360 around Z. second # is pitch, 90 up to -90 down.
-"angle"		spotlight cone size
-"_softangle" spotlight inner cone size
-"wait"		scale the falloff distance.  N>1 will shorten range, n<1 will extend it
-"delay"		attenuation formula
-	0 = Linear, original id (default)
-	1 = 1/x attenuation formula
-	2 = 1/(x^2) attenuation formula
-	3 = No attenuation (light stays same brightness at any distance)
-"_color" "# # #" 0-255
-"style"
-    0 = normal
-    1 = flicker: "mmnmmommommnonmmonqnmmo"
-    2 = slow strong pulse: "abcdefghijklmnopqrstuvwxyzyxwvutsrqponmlkjihgfedcba"
-    3 = candle: "mmmmmaaaaammmmmaaaaaabcdefgabcdefg"
-    4 = fast strobe: "mamamamamama"
-    5 = slow pulse, no black: "jklmnopqrstuvwxyzyxwvutsrqponmlkj"
-    6 = flicker: "nmonqnmomnmomomno"
-    7 = candle: "mmmaaaabcdefgmmmmaaaammmaamm"
-    8 = candle2: "mmmaaammmaaammmabcdefaaaammmmabcdefmmmaaaa"
-    9 = slow strobe: "aaaaaaaazzzzzzzz"
-    10 = flourescent flicker: mmamammmmammamamaaamammma"
-    11 = slow pulse, fading to black: "abcdefghijklmnopqrrqponmlkjihgfedcba"
-
-    styles 32-62 are assigned by the light program for switchable lights 
-    (default: 0)
-"message"	override the style string directly for the assigned style (clashes will overwrite each other)
-"distance" sound attenuation range (integer) - defaults to 0, which is the same as other ambient sounds.
-  1 = 'idle' - monster idle sound range
-  2 = 'normal' - monster bark sound range
-  3 = 'none' - loops everywhere forever (don't use this)
-"volume" loudness (0-1), distinct from distance
-*/
-/*FGD
-@PointClass base(Light, Flame) size(-4 -4 -12, 4 4 20) model({ "path": ":progs/flame.mdl" }) = 
-	light_torch_small_walltorch : "Small walltorch" []
+/*QUAKED light_torch_small_walltorch (0 .5 0) (-10 -10 -20) (10 10 20) X X X X X X X X NOT_ON_EASY NOT_ON_NORMAL NOT_ON_HARD_OR_NIGHTMARE NOT_IN_DEATHMATCH NOT_IN_COOP NOT_IN_SINGLEPLAYER X NOT_ON_HARD_ONLY NOT_ON_NIGHTMARE_ONLY
+{	model ("progs/flame.mdl");	}
+Short wall torch
+See the "light" entity for a full description.
 */
 void() light_torch_small_walltorch =
 {
-	precache_model ("progs/flame.mdl");
-	setmodel (self, "progs/flame.mdl");
+	if (SUB_Inhibit ())  // new spawnflags for all entities -- iw
+		return;
+
+	// precache_model("progs/flame.mdl");
+	precache_body_model("progs/flame.mdl");
+	// setmodel(self, "progs/flame.mdl");
+	body_model("progs/flame.mdl");
+	if !(self.spawnflags && SILENT_TORCH) // for silent torch -- dumptruck_ds
 	FireAmbient ();
-	makestatic (self);
-}
+	makestatic(self);
+};
 
-/*QUAKED light_flame_large_yellow (1 1 0) (-8 -8 -12) (8 8 20)
-Large yellow flame ball.  Makes crackly torch sound.
-
-Flags:
-"silent"	no ambient noise
-
-Keys:
-"light"		sets brightness (default: 300)
-"mangle"	spotlight direction - the first # is yaw, 0 to 360 around Z. second # is pitch, 90 up to -90 down.
-"angle"		spotlight cone size
-"_softangle" spotlight inner cone size
-"wait"		scale the falloff distance.  N>1 will shorten range, n<1 will extend it
-"delay"		attenuation formula
-	0 = Linear, original id (default)
-	1 = 1/x attenuation formula
-	2 = 1/(x^2) attenuation formula
-	3 = No attenuation (light stays same brightness at any distance)
-"_color" "# # #" 0-255
-"style"
-    0 = normal
-    1 = flicker: "mmnmmommommnonmmonqnmmo"
-    2 = slow strong pulse: "abcdefghijklmnopqrstuvwxyzyxwvutsrqponmlkjihgfedcba"
-    3 = candle: "mmmmmaaaaammmmmaaaaaabcdefgabcdefg"
-    4 = fast strobe: "mamamamamama"
-    5 = slow pulse, no black: "jklmnopqrstuvwxyzyxwvutsrqponmlkj"
-    6 = flicker: "nmonqnmomnmomomno"
-    7 = candle: "mmmaaaabcdefgmmmmaaaammmaamm"
-    8 = candle2: "mmmaaammmaaammmabcdefaaaammmmabcdefmmmaaaa"
-    9 = slow strobe: "aaaaaaaazzzzzzzz"
-    10 = flourescent flicker: mmamammmmammamamaaamammma"
-    11 = slow pulse, fading to black: "abcdefghijklmnopqrrqponmlkjihgfedcba"
-
-    styles 32-62 are assigned by the light program for switchable lights 
-    (default: 0)
-"message"	override the style string directly for the assigned style (clashes will overwrite each other)
-"distance" sound attenuation range (integer) - defaults to 0, which is the same as other ambient sounds.
-  1 = 'idle' - monster idle sound range
-  2 = 'normal' - monster bark sound range
-  3 = 'none' - loops everywhere forever (don't use this)
-"volume" loudness (0-1), distinct from distance
-*/
-/*FGD
-@PointClass base(Light, Flame) size(-8 -8 -12, 8 8 20) model({ "path": ":progs/flame2.mdl" }) = 
-	light_flame_large_yellow : "Large yellow flame" []
+/*QUAKED light_flame_large_yellow (0 1 0) (-10 -10 -12) (12 12 18) X X X X X X X X NOT_ON_EASY NOT_ON_NORMAL NOT_ON_HARD_OR_NIGHTMARE NOT_IN_DEATHMATCH NOT_IN_COOP NOT_IN_SINGLEPLAYER X NOT_ON_HARD_ONLY NOT_ON_NIGHTMARE_ONLY
+{	model ( { "path" : "progs/flame2.mdl", "frame" : 1 } );	}
+Large yellow flame
+See the "light" entity for a full description.
 */
 void() light_flame_large_yellow =
 {
-	precache_model ("progs/flame2.mdl");
+	if (SUB_Inhibit ())  // new spawnflags for all entities -- iw
+		return;
+
+	precache_model("progs/flame2.mdl");
 	setmodel (self, "progs/flame2.mdl");
 	self.frame = 1;
 	FireAmbient ();
-	makestatic (self);
-}
+	makestatic(self);
+};
 
-/*QUAKED light_flame_small_yellow (1 1 0) (-4 -4 -12) (4 4 20)
-Small yellow flame ball.  Makes crackly torch sound.
-
-Flags:
-"silent"	no ambient noise
-
-Keys:
-"light"		sets brightness (default: 300)
-"mangle"	spotlight direction - the first # is yaw, 0 to 360 around Z. second # is pitch, 90 up to -90 down.
-"angle"		spotlight cone size
-"_softangle" spotlight inner cone size
-"wait"		scale the falloff distance.  N>1 will shorten range, n<1 will extend it
-"delay"		attenuation formula
-	0 = Linear, original id (default)
-	1 = 1/x attenuation formula
-	2 = 1/(x^2) attenuation formula
-	3 = No attenuation (light stays same brightness at any distance)
-"_color" "# # #" 0-255
-"style"
-    0 = normal
-    1 = flicker: "mmnmmommommnonmmonqnmmo"
-    2 = slow strong pulse: "abcdefghijklmnopqrstuvwxyzyxwvutsrqponmlkjihgfedcba"
-    3 = candle: "mmmmmaaaaammmmmaaaaaabcdefgabcdefg"
-    4 = fast strobe: "mamamamamama"
-    5 = slow pulse, no black: "jklmnopqrstuvwxyzyxwvutsrqponmlkj"
-    6 = flicker: "nmonqnmomnmomomno"
-    7 = candle: "mmmaaaabcdefgmmmmaaaammmaamm"
-    8 = candle2: "mmmaaammmaaammmabcdefaaaammmmabcdefmmmaaaa"
-    9 = slow strobe: "aaaaaaaazzzzzzzz"
-    10 = flourescent flicker: mmamammmmammamamaaamammma"
-    11 = slow pulse, fading to black: "abcdefghijklmnopqrrqponmlkjihgfedcba"
-
-    styles 32-62 are assigned by the light program for switchable lights 
-    (default: 0)
-"message"	override the style string directly for the assigned style (clashes will overwrite each other)
-"distance" sound attenuation range (integer) - defaults to 0, which is the same as other ambient sounds.
-  1 = 'idle' - monster idle sound range
-  2 = 'normal' - monster bark sound range
-  3 = 'none' - loops everywhere forever (don't use this)
-"volume" loudness (0-1), distinct from distance
-*/
-/*FGD
-@PointClass base(Light, Flame) size(-4 -4 -12, 4 4 20) model({ "path": ":progs/flame2.mdl" }) = 
-	light_flame_small_yellow : "Small yellow flame"  []
+/*QUAKED light_flame_small_yellow (0 1 0) (-8 -8 -8) (8 8 8) X X X X X X X X NOT_ON_EASY NOT_ON_NORMAL NOT_ON_HARD_OR_NIGHTMARE NOT_IN_DEATHMATCH NOT_IN_COOP NOT_IN_SINGLEPLAYER X NOT_ON_HARD_ONLY NOT_ON_NIGHTMARE_ONLY
+{	model ("progs/flame2.mdl");	}
+Small yellow flame
+See the "light" entity for a full description.
 */
 void() light_flame_small_yellow =
 {
-	precache_model ("progs/flame2.mdl");
-	setmodel (self, "progs/flame2.mdl");
-	FireAmbient ();
-	makestatic (self);
-}
+	if (SUB_Inhibit ())  // new spawnflags for all entities -- iw
+		return;
 
-/*QUAKED light_flame_small_white (1 1 0) (-4 -4 -12) (4 4 20)
-Same as light_flame_small_yellow. Use that one.
-*/
-/*FGD
-@PointClass base(Light, Flame) size(-4 -4 -12, 4 4 20) model({ "path": ":progs/flame2.mdl" }) = 
-	light_flame_small_white : "Small white flame (same as light_flame_small_yellow)" []
+	precache_model("progs/flame2.mdl");
+	setmodel(self, "progs/flame2.mdl");
+	FireAmbient ();
+	makestatic(self);
+};
+
+/*QUAKED light_flame_small_white (0 1 0) (-8 -8 -8) (8 8 8) X X X X X X X X NOT_ON_EASY NOT_ON_NORMAL NOT_ON_HARD_OR_NIGHTMARE NOT_IN_DEATHMATCH NOT_IN_COOP NOT_IN_SINGLEPLAYER X NOT_ON_HARD_ONLY NOT_ON_NIGHTMARE_ONLY
+{	model ("progs/flame2.mdl");	}
+Left for compatability
+Identical to "light_flame_small_yellow"
 */
 void() light_flame_small_white =
 {
+	if (SUB_Inhibit ())  // new spawnflags for all entities -- iw
+		return;
+
 	light_flame_small_yellow();
-}
+};
 
-// ================================================================
-
-void() light_candle_group_off =
+/*QUAKED light_sprite_flame (0 1 0) (-8 -8 -8) (8 8 8) X X X X X X X X NOT_ON_EASY NOT_ON_NORMAL NOT_ON_HARD_OR_NIGHTMARE NOT_IN_DEATHMATCH NOT_IN_COOP NOT_IN_SINGLEPLAYER X NOT_ON_HARD_ONLY NOT_ON_NIGHTMARE_ONLY
+{	model ("progs/s_flame.spr");	}
+Large flame spite*/
+void() light_sprite_flame =
 {
-	entity c;
-	c = self;
-	do {
-		c.frame = not(c.frame, 1);
-		c = c.buddy;
-	} while (c != self && c != world);
-}
-
-void() light_candle_group_on =
-{
-	entity c;
-	c = self;
-	do {
-		c.frame |= 1;
-		c = c.buddy;
-	} while (c != self && c != world);
-}
-
-void() light_candle_use =
-{
-	light_use();
-	if (self.spawnflags & START_OFF)
-		light_candle_group_off();
-	else
-		light_candle_group_on();
-}
-
-// cache all candles with the same targetname as a linked list, with the first
-// one as master, so they can all be turned on and off in one target activation
-// without searching the whole map each time
-void() light_candle_group =
-{
-	if (self.buddy)
+	if (SUB_Inhibit ())  // new spawnflags for all entities -- iw
 		return;
-	
-	entity c, clast;
-	string oh = self.targetname;
-	clast = c = self;	
-	do {
-		c = find(c, targetname, oh);
-		if (c.classname == "light_candle")
-		{
-			clast.buddy = c;
-			c.targetname = string_null;
-			c.nextthink = 0;
-			clast = c;
-		}
-	} while (c != world);
-	
-	self.targetname = oh;
-	self.use = light_candle_use;
-}
 
-/*QUAKED light_candle (1 1 0) (-4 -4 0) (4 4 16) START_OFF
-Candle. If triggered to turn on and off, all candles with a matching targetname will ignite or go out as well.
-Keys:
-"width" - choose width 1-3, default (0) is random
-"height" - choose height 1-3, default (0) is random
-"angle" - choose orientation, blank is random yaw
-See 'light' keyvalues/spawnflags for more.
-*/
-/*FGD
-@PointClass base(LightTriggerable) size(-4 -4 0, 4 4 16) model({ "path": ":progs/candle2.mdl" }) = 
-	light_candle : "Animated candle. Trigger to turn on or off.
-If triggered to turn on and off, all candles with a matching targetname will ignite or go out as well.
-Choose size with 'width' and 'height' (leave either at 0 for random selection)."
-[
-	width(choices) : "Width" : 0 =
-	[
-		0: "Random"
-		1: "Narrow"
-		2: "Medium"
-		3: "Thick"
-	]
-	height(choices) : "Height" : 0 =
-	[
-		0: "Random"
-		1: "Short"
-		2: "Medium"
-		3: "Tall"
-	]
-]
-*/
-void() light_candle =
-{
-	if (!self.width)
-		//self.width = 1 + floor(random()*2.99);
-		self.width = 1 + floor(fabs((self.origin_x % 5) + (self.origin_y % 13) - self.origin_z) % 3);
-	if (!self.height)
-		//self.height = 1 + floor(random()*2.99);
-		self.height = 1 + floor(fabs((self.origin_x % 11) + (self.origin_y % 7) - self.origin_z) % 3);
-	if (self.angles == VEC_ORIGIN)
-		self.angles_y = floor(fabs((self.origin_x % 17) + (self.origin_y % 23) - self.origin_z) % 10) * 36;
-	
-	if (self.height == 1)
-		self.model = "progs/candle1.mdl";
-	else if (self.height == 2)
-		self.model = "progs/candle2.mdl";
-	else if (self.height == 3)
-		self.model = "progs/candle3.mdl";
+		precache_model("progs/s_flame.spr");
+		setmodel(self, "progs/s_flame.spr");
+		FireAmbient ();
 
-	precache_model2(self.model);
-	setmodel(self,self.model);
-		
-	if (self.width == 1)
-		self.frame = 4;
-	else if (self.width == 2)
-		self.frame = 0;
-	else if (self.width == 3)
-		self.frame = 2;
-	if (!(self.spawnflags & START_OFF))
-		self.frame += 1;
-	
-	light_message();
-	
-	if (self.targetname == string_null && self.style < 32)
-	{
-		makestatic(self);
-		return;
-	}
-	
-	light_oldstyle();
-	self.think = light_candle_group;
-	self.nextthink = time + 0.1;
-}
-
-// ================================================================
-
-string() target_lightstyle_next =
-{
-	entity tls;
-	if (self.owner) tls = self.owner;
-	else tls = self;
-	
-	if (tls.state == 0)
-	{
-		if (tls.noise == string_null)
-			tls.state = 0;
-		else
-			tls.state += 1;
-		return tls.message;
-	}
-	else if (tls.state == 1)
-	{
-		if (tls.noise1 == string_null)
-			tls.state = 0;
-		else
-			tls.state += 1;
-		return tls.noise;
-	}
-	else if (tls.state == 2)
-	{
-		if (tls.noise2 == string_null)
-			tls.state = 0;
-		else
-			tls.state += 1;
-		return tls.noise1;
-	}
-	else if (tls.state == 3)
-	{
-		if (tls.noise3 == string_null)
-			tls.state = 0;
-		else
-			tls.state += 1;
-		return tls.noise2;
-	}
-	else if (tls.state == 4)
-	{
-		if (tls.noise4 == string_null)
-			tls.state = 0;
-		else
-			tls.state += 1;
-		return tls.noise3;
-	}
-	else if (tls.state == 5)
-	{
-		tls.state = 0;
-		return tls.noise4;
-	}
-	return tls.message;
-}
-
-void(entity l, string st) lightstyle_switch =
-{
-	if (l.style)
-		lightstyle(l.style, st);
-	if (l.switchshadstyle)
-		lightstyle(l.switchshadstyle, st);
-}
-
-void() target_lightstyle_go =
-{
-	float st;
-	string newstyle = target_lightstyle_next();
-	if (self.style)
-	{
-		st = zeroconvert(self.style);		
-		lightstyle(st, newstyle);
-		return;
-	}
-	
-	entity l;
-	if (self.target != string_null)
-	{
-		l = world;
-		while (l.style == 0 && l.switchshadstyle == 0)
-		{
-			l = find(l, targetname, self.target);		
-			if (l == world)
-			{
-				dprint3("target_lightstyle couldn't find target ", self.target, "\n");
-				break;
-			}
-		}
-	}
-	if (l) lightstyle_switch(l, newstyle);
-	
-	if (self.target2 != string_null)
-	{
-		l = world;
-		while (l.style == 0 && l.switchshadstyle == 0)
-		{
-			l = find(l, targetname, self.target2);	
-			if (l == world)
-			{
-				dprint3("target_lightstyle couldn't find target2 ", self.target, "\n");
-				break;
-			}
-		}
-	}
-	if (l) lightstyle_switch(l, newstyle);
-
-	if (self.target3 != string_null)
-	{
-		l = world;
-		while (l.style == 0 && l.switchshadstyle == 0)
-		{
-			l = find(l, targetname, self.target3);
-			if (l == world)
-			{
-				dprint3("target_lightstyle couldn't find target3 ", self.target, "\n");
-				break;
-			}
-		}
-	}
-	if (l) lightstyle_switch(l, newstyle);
-
-	if (self.target4 != string_null)
-	{
-		l = world;
-		while (l.style == 0 && l.switchshadstyle == 0)
-		{
-			l = find(l, targetname, self.target4);		
-			if (l == world)
-			{
-				dprint3("target_lightstyle couldn't find target4 ", self.target, "\n");
-				break;
-			}
-		}
-	}	
-	if (l) lightstyle_switch(l, newstyle);
-}
-
-void() target_lightstyle_use =
-{
-	entity tls;
-	if (self.delay)
-	{
-		tls = spawn();
-		tls.think = target_lightstyle_go;
-		tls.nextthink = time + self.delay;
-		SUB_CopyTargets(tls);
-		tls.style = self.style;
-		tls.owner = self;
-	}
-	else
-	{
-		target_lightstyle_go();
-	}
-
-	playercount_convert(count);
-	if (self.count > 0)
-	{
-		self.count -= 1;
-		if (self.count == 0)
-			remove(self);
-	}
-}
-
-/*QUAKED target_lightstyle (.5 .8 .5) (-8 -8 -8) (8 8 8) START_ON
-This entity changes a global lightstyle when triggered. Set "style" to the lightstyle you want to override, and set "message" to the brightness pattern you want to set it to. If style is not set, and this entity targets any triggerable lights, it sets the brightness pattern of those lights when triggered instead. Note that targeting anything at a light makes it a triggerable light with its own style automatically.
-
-Setting style to -1 will override lightstyle 0, which is all static lights in the entire level.
-
-"targetname" if unspecified, will auto-fire itself once at map start
-"count" limit number of uses, 0 = infinite
-"delay" pause between trigger and activation
-"noise/noise1-4" cycle to additional brightness patterns on subsequent activations
-
-START_ON: fire itself once when the map starts regardless of targetname
-*/
-/*FGD
-@PointClass base(Appearflags, Targetname) color(128 210 128) = target_lightstyle : 
-"Target : Lightstyle
-Changes a global lightstyle when triggered. Will auto-fire at spawn if it has no targetname.
-
-Cycles through 'message' and then all the 'noise' keys if triggered repeatedly."
-[
-	message(string) : "Brightness pattern"
-	noise(string) : "Brightness pattern (2nd)"
-	noise1(string) : "Brightness pattern (3rd)"
-	noise2(string) : "Brightness pattern (4th)"
-	noise3(string) : "Brightness pattern (5th)"
-	noise4(string) : "Brightness pattern (6th)"
-	style(integer) : "Lightstyle to change (0-63)" : 0
-	count(integer) : "Limit uses" : 0
-	delay(string) : "Delay before activation" : "0"
-	target(target_destination) : "Target: acts on all with matching targetname" 
-	target2(target_destination) : "Target 2: acts on all with matching targetname" 
-	target3(target_destination) : "Target 3: acts on all with matching targetname" 
-	target4(target_destination) : "Target 4: acts on all with matching targetname" 
-	spawnflags(flags) = [
-		1 : "Go at map start" : 0
-	]
-]
-*/
-void() target_lightstyle =
-{
-	if (!SUB_ShouldSpawn()) 
-		return;
-		
-	if (self.message == string_null)
-		self.message = "azam";	// suitably garish accidental default
-	self.use = target_lightstyle_use;
-	
-	if (self.spawnflags & 1 || self.targetname == string_null)
-	{
-		self.think = target_lightstyle_go;
+		self.frame = rint(random() * 13);
+		self.first_frame = 0;
+		self.last_frame = 13;
+		self.speed = 0.05;
+		self.think = misc_model_think;
 		self.nextthink = time + 0.1;
-	}
-}
+
+};

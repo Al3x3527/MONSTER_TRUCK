@@ -12,7 +12,7 @@ $skin skin
 $scale 5
 
 $frame rise1 rise2 rise3 rise4 rise5 rise6 rise7 rise8 rise9 rise10
-$frame rise11 rise12 rise13 rise14 rise15 rise16 rise17 
+$frame rise11 rise12 rise13 rise14 rise15 rise16 rise17
 
 $frame walk1 walk2 walk3 walk4 walk5 walk6 walk7 walk8
 $frame walk9 walk10 walk11 walk12 walk13 walk14 walk15
@@ -27,11 +27,11 @@ $frame attack16 attack17 attack18 attack19 attack20 attack21 attack22
 $frame attack23
 
 $frame shocka1 shocka2 shocka3 shocka4 shocka5 shocka6 shocka7 shocka8
-$frame shocka9 shocka10 
+$frame shocka9 shocka10
 
 $frame shockb1 shockb2 shockb3 shockb4 shockb5 shockb6
 
-$frame shockc1 shockc2 shockc3 shockc4 shockc5 shockc6 shockc7 shockc8 
+$frame shockc1 shockc2 shockc3 shockc4 shockc5 shockc6 shockc7 shockc8
 $frame shockc9 shockc10
 
 
@@ -39,7 +39,7 @@ void(vector p) boss_missile;
 
 void() boss_face =
 {
-	
+
 // go for another player if multi player
 	if (self.enemy.health <= 0 || random() < 0.02)
 	{
@@ -51,10 +51,10 @@ void() boss_face =
 };
 
 void() boss_rise1	=[	$rise1, boss_rise2 ] {
-sound (self, CHAN_WEAPON, "boss1/out1.wav", 1, ATTN_NORM);
+sound_move (self, CHAN_WEAPON, "boss1/out1.wav", 1, ATTN_NORM);
 };
 void() boss_rise2	=[	$rise2, boss_rise3 ] {
-sound (self, CHAN_VOICE, "boss1/sight1.wav", 1, ATTN_NORM);
+sound_sight (self, CHAN_VOICE, "boss1/sight1.wav", 1, ATTN_NORM);
 };
 void() boss_rise3	=[	$rise3, boss_rise4 ] {};
 void() boss_rise4	=[	$rise4, boss_rise5 ] {};
@@ -165,7 +165,7 @@ void() boss_shockc9 =[	$shockc9, boss_shockc10 ] {};
 void() boss_shockc10 =[	$shockc10, boss_death1 ] {};
 
 void() boss_death1 = [$death1, boss_death2] {
-sound (self, CHAN_VOICE, "boss1/death.wav", 1, ATTN_NORM);
+sound_death (self, CHAN_VOICE, "boss1/death.wav", 1, ATTN_NORM);
 };
 void() boss_death2 = [$death2, boss_death3] {};
 void() boss_death3 = [$death3, boss_death4] {};
@@ -176,7 +176,7 @@ void() boss_death7 = [$death7, boss_death8] {};
 void() boss_death8 = [$death8, boss_death9] {};
 void() boss_death9 = [$death9, boss_death10]
 {
-	sound (self, CHAN_BODY, "boss1/out1.wav", 1, ATTN_NORM);
+	sound_move (self, CHAN_BODY, "boss1/out1.wav", 1, ATTN_NORM);
 	WriteByte (MSG_BROADCAST, SVC_TEMPENTITY);
 	WriteByte (MSG_BROADCAST, TE_LAVASPLASH);
 	WriteCoord (MSG_BROADCAST, self.origin_x);
@@ -198,33 +198,50 @@ void(vector p) boss_missile =
 	local	vector	org, vec, d;
 	local	float	t;
 
-	offang = vectoangles (self.enemy.origin - self.origin);	
+	offang = vectoangles (self.enemy.origin - self.origin);
 	makevectors (offang);
 
 	org = self.origin + p_x*v_forward + p_y*v_right + p_z*'0 0 1';
-	
+
 // lead the player on hard mode
 	if (skill > 1)
 	{
 		t = vlen(self.enemy.origin - org) / 300;
 		vec = self.enemy.velocity;
 		vec_z = 0;
-		d = self.enemy.origin + t * vec;		
+		d = self.enemy.origin + t * vec;
 	}
 	else
 	{
 		d = self.enemy.origin;
 	}
-	
+
 	vec = normalize (d - org);
 
-	launch_spike (org, vec);
-	setmodel (newmis, "progs/lavaball.mdl");
+	launch_spike2 (org, vec, 300);
+	// setmodel (newmis, "progs/lavaball.mdl");
+	if (self.mdl_proj != "") // dumptruck_ds custom_mdls
+	{
+			setmodel (newmis, self.mdl_proj);
+		}
+		else
+		{
+			setmodel (newmis, "progs/lavaball.mdl");
+	}
+
+	if (!newmis.skin_proj) // dumptruck_ds
+	{
+			newmis.skin = self.skin_proj;
+		}
+		else
+		{
+			newmis.skin = 0;
+	}
+
 	newmis.avelocity = '200 100 300';
-	setsize (newmis, VEC_ORIGIN, VEC_ORIGIN);		
-	newmis.velocity = vec*300;
+	setsize (newmis, VEC_ORIGIN, VEC_ORIGIN);
 	newmis.touch = T_MissileTouch; // rocket explosion
-	sound (self, CHAN_WEAPON, "boss1/throw.wav", 1, ATTN_NORM);
+	sound_attack (self, CHAN_WEAPON, "boss1/throw.wav", 1, ATTN_NORM);
 
 // check for dead enemy
 	if (self.enemy.health <= 0)
@@ -237,10 +254,11 @@ void() boss_awake =
 	self.solid = SOLID_SLIDEBOX;
 	self.movetype = MOVETYPE_STEP;
 	self.takedamage = DAMAGE_NO;
-	
-	setmodel (self, "progs/boss.mdl");
+
+	body_model ("progs/boss.mdl");
+	// setmodel (self, "progs/boss.mdl"); //custom_mdl -- dumptruck_ds
 	setsize (self, '-128 -128 -24', '128 128 256');
-	
+
 	if (skill == 0)
 		self.health = 1;
 	else
@@ -263,24 +281,35 @@ void() boss_awake =
 */
 void() monster_boss =
 {
+	if (SUB_Inhibit ())  // new spawnflags for all entities -- iw
+		return;
+
+	if (self.spawnflags & I_AM_TURRET)
+		objerror("Incompatible spawnflag: TURRET_MODE\n");
+
 	if (deathmatch)
 	{
 		remove(self);
 		return;
 	}
-	precache_model ("progs/boss.mdl");
+	// precache_model ("progs/boss.mdl");
+	precache_body_model ("progs/boss.mdl");
+	precache_head_model ("progs/h_boss.mdl");
+
 	precache_model ("progs/lavaball.mdl");
 
 	precache_sound ("weapons/rocket1i.wav");
-	precache_sound ("boss1/out1.wav");
-	precache_sound ("boss1/sight1.wav");
+	precache_sound_move ("boss1/out1.wav");
+	precache_sound_sight ("boss1/sight1.wav");
 	precache_sound ("misc/power.wav");
-	precache_sound ("boss1/throw.wav");
-	precache_sound ("boss1/pain.wav");
-	precache_sound ("boss1/death.wav");
+	precache_sound_attack ("boss1/throw.wav");
+	precache_sound_pain ("boss1/pain.wav");
+	precache_sound_death ("boss1/death.wav");
 
 	total_monsters = total_monsters + 1;
 
+	self.flags = FL_MONSTER;
+	self.touch = monster_touch;	// 1998-09-16 Sliding/not-jumping on monsters/boxes/players fix by Maddes/Kryten
 	self.use = boss_awake;
 };
 
@@ -292,7 +321,7 @@ float	lightning_end;
 void() lightning_fire =
 {
 	local vector p1, p2;
-	
+
 	if (time >= lightning_end)
 	{	// done here, put the terminals back up
 		self = le1;
@@ -301,13 +330,13 @@ void() lightning_fire =
 		door_go_down ();
 		return;
 	}
-	
+
 	p1 = (le1.mins + le1.maxs) * 0.5;
 	p1_z = le1.absmin_z - 16;
-	
+
 	p2 = (le2.mins + le2.maxs) * 0.5;
 	p2_z = le2.absmin_z - 16;
-	
+
 	// compensate for length of bolt
 	p2 = p2 - normalize(p2-p1)*100;
 
@@ -337,7 +366,7 @@ void() lightning_use =
 		dprint ("missing lightning targets\n");
 		return;
 	}
-	
+
 	if (
 	 (le1.state != STATE_TOP && le1.state != STATE_BOTTOM)
 	|| (le2.state != STATE_TOP && le2.state != STATE_BOTTOM)
@@ -353,7 +382,7 @@ void() lightning_use =
 	lightning_end = time + 1;
 
 	sound (self, CHAN_VOICE, "misc/power.wav", 1, ATTN_NORM);
-	lightning_fire ();		
+	lightning_fire ();
 
 // advance the boss pain if down
 	self = find (world, classname, "monster_boss");
@@ -362,7 +391,7 @@ void() lightning_use =
 	self.enemy = activator;
 	if (le1.state == STATE_TOP && self.health > 0)
 	{
-		sound (self, CHAN_VOICE, "boss1/pain.wav", 1, ATTN_NORM);
+		sound_pain (self, CHAN_VOICE, "boss1/pain.wav", 1, ATTN_NORM);
 		self.health = self.health - 1;
 		if (self.health >= 2)
 			boss_shocka1();
@@ -370,16 +399,17 @@ void() lightning_use =
 			boss_shockb1();
 		else if (self.health == 0)
 			boss_shockc1();
-	}	
+	}
 };
 
 
-/*QUAKED event_lightning (0 1 1) (-16 -16 -16) (16 16 16)
+/*QUAKED event_lightning (0 1 1) (-16 -16 -16) (16 16 16) X X X X X X X X NOT_ON_EASY NOT_ON_NORMAL NOT_ON_HARD_OR_NIGHTMARE NOT_IN_DEATHMATCH NOT_IN_COOP NOT_IN_SINGLEPLAYER X NOT_ON_HARD_ONLY NOT_ON_NIGHTMARE_ONLY
 Just for boss level.
 */
 void() event_lightning =
 {
+	if (SUB_Inhibit ())  // new spawnflags for all entities -- iw
+		return;
+
 	self.use = lightning_use;
 };
-
-

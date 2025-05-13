@@ -1,8 +1,12 @@
+
+void() InitBodyQue;
+
+
 void() main =
 {
 	dprint ("main function\n");
-	
-// these are just commands to the prog compiler to copy these files
+
+// these are just commands the the prog compiler to copy these files
 
 	precache_file ("progs.dat");
 	precache_file ("gfx.wad");
@@ -48,35 +52,35 @@ void() main =
 	precache_file ("gfx/dim_tcp.lmp");
 	precache_file ("gfx/dim_mult.lmp");
 	precache_file ("gfx/mainmenu.lmp");
-	
+
 	precache_file ("gfx/box_tl.lmp");
 	precache_file ("gfx/box_tm.lmp");
 	precache_file ("gfx/box_tr.lmp");
-	
+
 	precache_file ("gfx/box_ml.lmp");
 	precache_file ("gfx/box_mm.lmp");
 	precache_file ("gfx/box_mm2.lmp");
 	precache_file ("gfx/box_mr.lmp");
-	
+
 	precache_file ("gfx/box_bl.lmp");
 	precache_file ("gfx/box_bm.lmp");
 	precache_file ("gfx/box_br.lmp");
-	
+
 	precache_file ("gfx/sp_menu.lmp");
 	precache_file ("gfx/ttl_sgl.lmp");
 	precache_file ("gfx/ttl_main.lmp");
 	precache_file ("gfx/ttl_cstm.lmp");
-	
+
 	precache_file ("gfx/mp_menu.lmp");
-	
+
 	precache_file ("gfx/netmen1.lmp");
 	precache_file ("gfx/netmen2.lmp");
 	precache_file ("gfx/netmen3.lmp");
 	precache_file ("gfx/netmen4.lmp");
 	precache_file ("gfx/netmen5.lmp");
-	
+
 	precache_file ("gfx/sell.lmp");
-	
+
 	precache_file ("gfx/help0.lmp");
 	precache_file ("gfx/help1.lmp");
 	precache_file ("gfx/help2.lmp");
@@ -148,143 +152,203 @@ void() main =
 	precache_file2 ("maps/dm4.bsp");
 	precache_file2 ("maps/dm5.bsp");
 	precache_file2 ("maps/dm6.bsp");
-}
+};
 
 
+/*
+================
+DetectKnownRelease
+
+This detects whether the current map is from a known release for which
+a backwards-compatibility hack should be applied, and sets the
+known_release global accordingly.  -- iw
+================
+*/
+void() DetectKnownRelease =
+{
+	local string release_name;
+
+	known_release = KNOWN_RELEASE_NOT;
+	release_name = "";
+
+	if (mapname == "dm1" ||
+		mapname == "dm2" ||
+		mapname == "dm3" ||
+		mapname == "dm4" ||
+		mapname == "dm5" ||
+		mapname == "dm6" ||
+		mapname == "e1m1" ||
+		mapname == "e1m2" ||
+		mapname == "e1m3" ||
+		mapname == "e1m4" ||
+		mapname == "e1m5" ||
+		mapname == "e1m6" ||
+		mapname == "e1m7" ||
+		mapname == "e1m8" ||
+		mapname == "e2m1" ||
+		mapname == "e2m2" ||
+		mapname == "e2m3" ||
+		mapname == "e2m4" ||
+		mapname == "e2m5" ||
+		mapname == "e2m6" ||
+		mapname == "e2m7" ||
+		mapname == "e3m1" ||
+		mapname == "e3m2" ||
+		mapname == "e3m3" ||
+		mapname == "e3m4" ||
+		mapname == "e3m5" ||
+		mapname == "e3m6" ||
+		mapname == "e3m7" ||
+		mapname == "e4m1" ||
+		mapname == "e4m2" ||
+		mapname == "e4m3" ||
+		mapname == "e4m4" ||
+		mapname == "e4m5" ||
+		mapname == "e4m6" ||
+		mapname == "e4m7" ||
+		mapname == "e4m8" ||
+		mapname == "end" ||
+		(mapname == "start" && world.message == "Introduction"))
+	{
+		known_release = KNOWN_RELEASE_ID1;
+		release_name = "id1";
+	}
+
+	if (mapname == "jamx_artistical" ||
+		mapname == "jamx_bloodshot" ||
+		mapname == "jamx_fw" ||
+		mapname == "jamx_hcm" ||
+		mapname == "jamx_ionous" ||
+		mapname == "jamx_jcr" ||
+		mapname == "jamx_kalebclark" ||
+		mapname == "jamx_mafon" ||
+		//mapname == "jamx_mugwump" ||   // dummy map
+		mapname == "jamx_naitelveni" ||
+		mapname == "jamx_newhouse" ||
+		mapname == "jamx_pinchy" ||
+		mapname == "jamx_strwrk" ||
+		mapname == "jamx_ukko" ||
+		mapname == "jamx_yoder" ||
+		(mapname == "start" && world.message == "An Unending Dusk"))
+	{
+		known_release = KNOWN_RELEASE_FUNC_MAPJAMX;
+		release_name = "func_mapjamx";
+	}
+
+	if (release_name != "")
+	{
+		dprint ("WARNING: progs.dat detected a map from ");
+		dprint (release_name);
+		dprint (", attempting to behave compatibly\n");
+	}
+};
+
+
+entity	lastspawn;
 
 //=======================
 /*QUAKED worldspawn (0 0 0) ?
+Only used for the world entity.
 
-Keys:
-"light" default light level
-"message" sets the title of the map
-"sounds" CD track to play
-"wad" which graphics wads to use. semicolon delineated, no spaces
-"worldtype" style of keys to spawn
-    0 = medieval
-    1 = metal
-    2 = base
-"gravity" how fast your dreams come crashing down
+Optionally set reset_items to one of the following values:
+0: don't reset the player's inventory
+1: reset to shotgun, axe, and 25 shells
+2: reset to axe only
 
-"_sunlight" "#"
-"_sun_mangle" "# # 0" yaw pitch roll. pitch is 90 to -90 degrees up to down.
-"_sunlight_color" "# # #"
+message(string) : "Level name"
 
-"_dirt" use dirtmapping
-"_dirtdepth" length of dirt rays, default 128.
-"_dirtscale" Scale factor used in dirt calculations, default 1 (higher is darker)
-"_dirtgain" Exponent used in dirt calculation, default 1 (lower is darker)
-*/
-/*FGD
-@SolidClass color(240 240 240) = worldspawn : "World entity"
-[
-	message(string) : "Map name"
-	worldtype(choices) : "Key Style" : 0 =
-	[
-		0 : "Medieval"
-		1 : "Runemetal"
-		2 : "Base"
-	]
-	fog(string) : "Set fog via engine (D R G B)"
-	fog_density(string) : "Set fog density via mod"
-	fog_color(string) : "Set fog color via mod (R G B)"
-	sounds(integer) : "CD track to play" : 0
-	light(integer) : "Ambient light"
-	gravity(integer) : "Gravity"
-	sky(string) : "Skybox"
-	_skyfog(string) : "Sky fog strength"
-	_wateralpha(string) : "Water alpha"
-	_lavaalpha(string) : "Lava alpha" : "1.0"
-	_telealpha(string) : "Tele alpha" : "1.0"
-	_sunlight(integer) : "Sunlight"
-	_sun_mangle(string) : "Sun mangle (Yaw pitch roll)"
-	_sunlight_color(string) : "Sun color"
-	_dirt(integer) : "use dirtmapping" : 0
-	_dirtdepth(integer) : "length of dirt rays" : 128
-	_dirtscale(string) : "Scale factor used in dirt calculations, higher is darker" : "1.0"
-	_dirtgain(string) : "Exponent used in dirt calculation, lower is darker" : "1.0"
-]
+worldtype(choices) : "Ambience" : 0 =
+0 : "Medieval"
+1 : "Runic (metal)"
+2 : "Present (base)"
+
+sounds(integer) : "CD track to play" : 0
+
+light(integer) : "Ambient light" : 0 : "Set a global minimum light level of 'n' across the whole map. This is an easy way to eliminate completely dark areas of the level, however you may lose some contrast as a result, so use with care. Default 0"
+
+reset_items(choices) : "Reset the player's inventory on spawn" : 0 =
+0 "Don't reset the player's inventory"
+1 "Reset to shotgun, axe, and 25 shells"
+2 "Reset to axe only"
+
+_sunlight(integer) : "Sunlight" : 0 : "Set the brightness of the sunlight coming from an unseen sun in the sky. Sky brushes (or more accurately bsp leafs with sky contents) will emit sunlight at an angle specified by the _sun_mangle key. Default 0"
+
+_sun_mangle(string) : "Sun mangle (Yaw pitch roll)" : "0 -90 0" : "Specifies the direction of sunlight using yaw(x), pitch(y) and roll(z) in degrees. Yaw specifies the angle around the Z-axis from 0 to 359 degrees and pitch specifies the angle from 90 (straight up) to -90 (straight down). Roll has no effect, so use any value (e.g. 0). Default is straight down (0 -90 0)"
+
+_sunlight_penumbra(integer) : "Sunlight penumbra in degrees" : 0 : "Specifies the penumbra width, in degrees, of sunlight. Useful values are 3-4 for a gentle soft edge, or 10-20+ for more diffuse sunlight. Default is 0"
+
+_sunlight_color(color255) : "Sunlight color R G B" : "255 255 255" : "Specify red(r), green(g) and blue(b) components for the colour of the sunlight. RGB component values are between 0 and 255 (between 0 and 1 is also accepted). Default is white light (255 255 255)"
+
+_sunlight2(integer) : "Sunlight 2 brightness" : 0 : "Set the brightness of a large dome of lights positioned around the map (16K unit radius). Useful for simulating higly diffused light (e.g. cloudy skies) in outdoor areas. Default 0"
+
+_sunlight2_color(color255) : "Sunlight 2 color R G B" : "255 255 255" : "Specifies the colour of _sunlight2, same format as _sunlight_color. Default is white light (255 255 255)"
+
+_sunlight3(integer) : "Sunlight 3 brightness" : 0 : "Same as _sunlight2 but creates lights on the bottom hemisphere. Default 0"
+
+_sunlight3_color(color255) : "Sunlight 3 color R G B" : "255 255 255" : "Specifies the colour of _sunlight3, same format as _sunlight_color. Default is white light (255 255 255)"
+
+_dist(integer) : "Global light scale" : 1 : "Scales the fade distance of all lights by a factor of n. If n is more than 1 lights fade more quickly with distance and if n is less than 1, lights fade more slowly with distance and light reaches further"
+
+_range(float) : "Global light range" : "0.5" : "Scales the brightness range of all lights without affecting their fade discance. Values of n more than 0.5 makes lights brighter and n less than 0.5 makes lights less bright. The same effect can be achieved on individual lights by adjusting both the 'light' and 'wait' attributes"
+
+_anglescale(float) : "Light angle scale" : "0.5" : "Sets a scaling factor for how much influence the angle of incidence of sunlight on a surface has on the brightness of the surface. n must be between 0.0 and 1.0. Smaller values mean less attenuation, with zero meaning that angle of incidence has no effect at all on the brightness. Default 0.5"
+
+_dirt(integer) : "Dirt mapping (AO)" : -1 : "1 enables dirtmapping (ambient occlusion) on all lights, borrowed from q3map2. This adds shadows to corners and crevices. You can override the global setting for specific lights with the _dirt light entity key or _sunlight_dirt, _sunlight2_dirt, and _minlight_dirt worldspawn keys. Default is no dirtmapping (-1)"
+
+_sunlight_dirt(integer) : "Sunlight dirt" : -1 : "1 enables dirtmapping (ambient occlusion) on sunlight, -1 to disable (making it illuminate the dirtmapping shadows). Default is to use the value of '_dirt'"
+
+_sunlight2_dirt(integer) : "Sublight 2 dirt" : -1 : "1 enables dirtmapping (ambient occlusion) on sunlight2, -1 to disable. Default is to use the value of '_dirt'"
+
+_minlight_dirt(integer) : "Minlight dirt" : -1 : "1 enables dirtmapping (ambient occlusion) on minlight, -1 to disable. Default is to use the value of '_dirt'"
+
+_dirtmode(integer) : "Dirt mode" : 0 : "Choose between ordered (0, default) and randomized (1) dirtmapping."
+
+_dirtdepth(integer) : "Dirt depth" : 128 : "Maximum depth of occlusion checking for dirtmapping, default 128."
+
+_dirtscale(integer) : "Dirt scale" : 1 : "Scale factor used in dirt calculations, default 1. Lower values (e.g. 0.5) make the dirt fainter, 2.0 would create much darker shadows"
+
+_dirtgain(integer) : "Dirt gain" : 1 : "Exponent used in dirt calculation, default 1. Lower values (e.g. 0.5) make the shadows darker and stretch further away from corners"
+
+_gamma(integer) : "Lightmap gamma" : 1 : "Adjust brightness of final lightmap. Default 1, >1 is brighter, <1 is darker"
+
+fog(string) : "Fog Command" :  : "ENGINE only 'console command' for setting fog parameters, Density/R/G/B example = (0.05 0.3 0.3 0.3)."
+
+fog_density(string) : "Fog Density example = (0.05)"
+
+fog_color(string) : "Fog Color R/G/B example = (0.3 0.3 0.3)"
+
+sky(string) : "Sky Texture" :  : "Must have compatible skybox textures in gfx/env folder."
 */
 //=======================
 void() worldspawn =
 {
+	DetectKnownRelease ();
+
+	InitNewSpawnflags ();  // new spawnflags for all entities -- iw
+
 	lastspawn = world;
-	startingserverflags = serverflags;
+	InitBodyQue ();
 
-	InitBodyQueue ();
-	InitLightStyles();	// moved to lights.qc
+// custom map attributes
+	if (self.model == "maps/e1m8.bsp" && self.skip_id1_overrides == 0)
+		cvar_set ("sv_gravity", "100");
+	else
+		cvar_set ("sv_gravity", "800");
 
-	if (!self.gravity)
-	{
-		if (mapname == "e1m8")
-		{
-			self.gravity = 100;
-		}
-		else
-		{
-			self.gravity = 800;
-		}
-	}
-	cvar_set("sv_gravity", ftos(self.gravity));
-	
-	// learn to map petersen i hate u
-	if (mapname == "e4m5") sandyMadeThis = TRUE;
-	
-	// make sure these are set for spawnfuncs, which happen before the first startframe()
-	teamplay = cvar("teamplay");
-	skill = cvar("skill");
-	
-	self.light_lev = 0;	// shut up FTEQCC warning
-	
-	fog_fixKeys();	// -1 -> 0 switch, if world has fog values
-	
-	keyType = "Key";	// default if there are no keys placed in the map
+	cutscene = 0;   // No cutscene is active during worldspawn. Drake -- dumptruck_ds
 
-	if (cvar("pr_checkextension"))
-	{
-		if (checkextension("QUAKE_EX"))
-		{
-			// do absolutely nothing in the rerelease
-			isKex = TRUE;
-		}
-#ifndef NO_CSQC
-		else
-		{
-			isCSQC = TRUE;
-			/*
-			// globalstat is inconsistently implemented (ironwail) because the "EXT_CSQC" 
-			// extension is actually undefined and meaningless
-			if (checkextension("EXT_CSQC"))
-			{
-				globalstat(STAT_CLIENTS, 2, "clients");
-				globalstat(STAT_CLIENTDATA, 2, "clientsAliveMask");	// client death status monitor
-			}
-			else
-			*/
-			clientstat(STAT_KEYCOUNTS, 2, worldtype);	// multiple keys on hud
-			clientstat(STAT_CLIENTDATA, 2, clientdata);	// shitty client death status monitor
-			clientstat(STAT_TINTAMOUNT, 2, tint);		// backdoor v_cshift
-			clientstat(STAT_TINTCOLOR_R, 2, tint_color_x);
-			clientstat(STAT_TINTCOLOR_G, 2, tint_color_y);
-			clientstat(STAT_TINTCOLOR_B, 2, tint_color_z);
-		}
-#endif
-	}
-
-	cdtrack = &world.sounds;	// absolute madness. see void() target_music_use
+	world_sounds = &world.sounds;  //Spike via dumptruck_ds || not read-only yet...
 
 // the area based ambient sounds MUST be the first precache_sounds
 
-// player precaches	
+// player precaches
 	W_Precache ();			// get weapon precaches
 
-	precache_sound ("misc/null.wav");
-
-	// sounds used from C physics code
-	precache_sound ("demon/dland2.wav");		// landing thud
+// sounds used from C physics code
+	precache_sound_land ("demon/dland2.wav");		// landing thud
 	precache_sound ("misc/h2ohit1.wav");		// landing splash
 
-	// player sounds
+// setup precaches always needed
 	precache_sound ("items/itembk2.wav");		// item respawn sound
 	precache_sound ("player/plyrjmp8.wav");		// player jump
 	precache_sound ("player/land.wav");			// player landing
@@ -302,27 +366,26 @@ void() worldspawn =
 	precache_sound ("misc/r_tele3.wav");
 	precache_sound ("misc/r_tele4.wav");
 	precache_sound ("misc/r_tele5.wav");
-	
-// iw -- fix powerup cheat sounds
-// sounds used by cheats
-	precache_sound ("items/suit2.wav");			// suit (finish)
-	precache_sound ("items/protect2.wav");		// pent (finish)
-	precache_sound ("items/protect3.wav");		// pent (protect)
-	precache_sound ("items/inv2.wav");			// ring (finish)
-	precache_sound ("items/inv3.wav");			// ring (idle)
-	precache_sound ("items/damage2.wav");		// quad (finish)
-	precache_sound ("items/damage3.wav");		// quad (attack)
-// iw -- END
-
-	// items
 	precache_sound ("weapons/lock4.wav");		// ammo pick up
 	precache_sound ("weapons/pkup.wav");		// weapon up
 	precache_sound ("items/armor1.wav");		// armor up
+	precache_sound ("weapons/lhit.wav");		//lightning
+	precache_sound ("weapons/lstart.wav");		//lightning start
 
-	precache_sound3("items/pack.wav");	// backpacks can play either of these
-	precache_sound3("items/patch.wav");
+	// iw -- fix powerup cheat sounds // noticed this in Copper so why not? --ds
+	// sounds used by cheats
+		precache_sound ("items/suit2.wav");			// suit (finish)
+		precache_sound ("items/protect2.wav");		// pent (finish)
+		precache_sound ("items/protect3.wav");		// pent (protect)
+		precache_sound ("items/inv2.wav");			// ring (finish)
+		precache_sound ("items/inv3.wav");			// ring (idle)
+		precache_sound ("items/damage2.wav");		// quad (finish)
+		precache_sound ("items/damage3.wav");		// quad (attack)
+	// iw -- END
 
-	// player gib sounds
+	precache_sound ("misc/power.wav");			//lightning for boss
+
+// player gib sounds
 	precache_sound ("player/gib.wav");			// player gib sound
 	precache_sound ("player/udeath.wav");		// player gib sound
 	precache_sound ("player/tornoff2.wav");		// gib sound
@@ -343,20 +406,26 @@ void() worldspawn =
 	precache_sound ("player/death4.wav");
 	precache_sound ("player/death5.wav");
 
-// liquids
+// ax sounds
+	precache_sound ("weapons/ax1.wav");			// ax swoosh
+	precache_sound ("player/axhit1.wav");		// ax hit meat
+	precache_sound ("player/axhit2.wav");		// ax hit world
+
 	precache_sound ("player/h2ojump.wav");		// player jumping into water
 	precache_sound ("player/slimbrn2.wav");		// player enter slime
 	precache_sound ("player/inh2o.wav");		// player enter water
 	precache_sound ("player/inlava.wav");		// player enter lava
 	precache_sound ("misc/outwater.wav");		// leaving water sound
-	precache_sound ("misc/w_under.wav");		// copper: diving water sound
-	precache_sound ("misc/w_under2.wav");		// copper: diving water sound
+
 	precache_sound ("player/lburn1.wav");		// lava burn
 	precache_sound ("player/lburn2.wav");		// lava burn
+
 	precache_sound ("misc/water1.wav");			// swimming
 	precache_sound ("misc/water2.wav");			// swimming
 
 	precache_model ("progs/player.mdl");
+	precache_model ("progs/s_null.spr");  // Invisible -- Drake -- dumptruck_ds
+	// precache_model ("progs/null_256.spr");  // Invisible -- Drake -- dumptruck_ds
 	precache_model ("progs/eyes.mdl");
 	precache_model ("progs/h_player.mdl");
 	precache_model ("progs/gib1.mdl");
@@ -365,165 +434,181 @@ void() worldspawn =
 
 	precache_model ("progs/s_bubble.spr");	// drowning bubbles
 	precache_model ("progs/s_explod.spr");	// sprite explosion
-	precache_model ("progs/s_explo2.spr");	// sprite weak explosion
+
+	precache_model ("progs/v_axe.mdl");
+	precache_model ("progs/v_shot.mdl");
+	precache_model ("progs/v_nail.mdl");
+	precache_model ("progs/v_rock.mdl");
+	precache_model ("progs/v_shot2.mdl");
+	precache_model ("progs/v_nail2.mdl");
+	precache_model ("progs/v_rock2.mdl");
 
 	precache_model ("progs/bolt.mdl");		// for lightning gun
 	precache_model ("progs/bolt2.mdl");		// for lightning gun
 	precache_model ("progs/bolt3.mdl");		// for boss shock
 	precache_model ("progs/lavaball.mdl");	// for testing
-	
+
 	precache_model ("progs/missile.mdl");
 	precache_model ("progs/grenade.mdl");
 	precache_model ("progs/spike.mdl");
-	//precache_model ("progs/s_spike.mdl");
+	// dumptruck_ds added w_spike due to errors
+	// with custom_mdls in precache_proj_model in wizard.qc
+	// precache_model ("progs/w_spike.mdl");
+	// this is on hold for now head and body are working
+	precache_model ("progs/s_spike.mdl");
 
 	precache_model ("progs/backpack.mdl");
 
 	precache_model ("progs/zom_gib.mdl");
-	
-}
+
+	precache_model ("progs/v_light.mdl");
+
+	precache_model ("progs/w_s_key.mdl"); // dumptruck_ds needed for DropStuff
+	precache_model ("progs/w_g_key.mdl"); //
+	precache_sound ("misc/medkey.wav");
+	precache_sound ("misc/runekey.wav");
+	precache_model ("progs/m_s_key.mdl");
+	precache_model ("progs/m_g_key.mdl");
+	precache_sound2 ("misc/basekey.wav");
+	precache_model2 ("progs/b_s_key.mdl");
+	precache_model2 ("progs/b_g_key.mdl");
+	precache_model ("progs/h_mdls/pd_vial.mdl"); // DropVial -- dumptruck_ds
+	precache_sound ("items/r_item1.wav");
+	precache_sound ("dump/armsh1.wav"); // DropShard -- dumptruck_ds
+	precache_model ("progs/armshr.mdl");
+
+//
+// Setup light animation tables. 'a' is total darkness, 'z' is maxbright.
+//
+
+	// 0 normal
+	lightstyle(0, "m");
+
+	// 1 FLICKER (first variety)
+	lightstyle(1, "mmnmmommommnonmmonqnmmo");
+
+	// 2 SLOW STRONG PULSE
+	lightstyle(2, "abcdefghijklmnopqrstuvwxyzyxwvutsrqponmlkjihgfedcba");
+
+	// 3 CANDLE (first variety)
+	lightstyle(3, "mmmmmaaaaammmmmaaaaaabcdefgabcdefg");
+
+	// 4 FAST STROBE
+	lightstyle(4, "mamamamamama");
+
+	// 5 GENTLE PULSE 1
+	lightstyle(5,"jklmnopqrstuvwxyzyxwvutsrqponmlkj");
+
+	// 6 FLICKER (second variety)
+	lightstyle(6, "nmonqnmomnmomomno");
+
+	// 7 CANDLE (second variety)
+	lightstyle(7, "mmmaaaabcdefgmmmmaaaammmaamm");
+
+	// 8 CANDLE (third variety)
+	lightstyle(8, "mmmaaammmaaammmabcdefaaaammmmabcdefmmmaaaa");
+
+	// 9 SLOW STROBE (fourth variety)
+	lightstyle(9, "aaaaaaaazzzzzzzz");
+
+	// 10 FLUORESCENT FLICKER
+	lightstyle(10, "mmamammmmammamamaaamammma");
+
+	// 11 SLOW PULSE NOT FADE TO BLACK
+	lightstyle(11, "abcdefghijklmnopqrrqponmlkjihgfedcba");
+
+	// styles 32-62 are assigned by the light program for switchable lights
+
+	// 63 testing
+	lightstyle(63, "a");
+};
+
+void() RestartLoopSounds_think = {
+	sound(self, self.impulse, self.noise, self.volume, self.speed);
+};
+
+void() RestartLoopSounds = {
+	entity e;
+	e = find(world, classname, "play_sound_triggered");
+	while (e) {
+
+		if (e.spawnflags & 3 == 3) { // both "toggle" and "looped" need to be set
+			if (e.state == 1) {
+				e.nextthink = time + 0.1;
+				e.think = RestartLoopSounds_think;
+			}
+		}
+
+		e = find(e, classname, "play_sound_triggered");
+	}
+};
+
 
 void() StartFrame =
 {
+	if (!done_inhibition_summary)  // new spawnflags for all entities -- iw
+		PrintInhibitionSummary ();
+
 	teamplay = cvar("teamplay");
-	
-	if (initCleanup)
-	{
-		initCleanup -= 1;
-		
-		if (skill_str != string_null)
-		{
-			dprint("restoring skill from save\n");
-			cvar_set("skill",skill_str);
-		}
+	skill = cvar("skill");
+	framecount = framecount + 1;
+
+	if (cleanUpClientStuff) {
+		cleanUpClientStuff -= 1;
+
+		RestartLoopSounds();
 	}
 	else if (!gamestarted && framecount > 2)
 	{
 		if (framecount != 3)
-			initCleanup += 2;
-		
+			cleanUpClientStuff += 2;
+
 		gamestarted = TRUE;
 	}
-		
-	float sk = cvar("skill");
-	entity skbtn;
-	if (sk != skill)
-	{
-		skill = sk;
-		skbtn = skill_head;
-		while (skbtn)
-		{
-			self = skbtn;
-			dprint("activating skillbutton from startframe\n");
-			skillbutton_activate();
-			skbtn = skbtn.owner;
-		}
-		self = world;
-	}	
-	
-	framecount++;
-	//cvar_set("registered",ftos(framecount));
-	
-#ifndef NO_CSQC
-	// assemble two bytes out of client count and a bitmask of who's dead to send to 
-	// players for display on the hud and scoreboard	
-	if (coop || deathmatch)
-	{
-		entity e = nextent(world);
-		float p = 16;
-		float clientDataMask;
-		clientDataMask = clients & 15;
-
-		while (e.flags & FL_CLIENT)
-		{
-			if (e.health > 0 && e.deadflag != DEAD_DEAD)
-			clientDataMask |= p;
-			p *= 2;
-			e = nextent(e);
-		}
-		
-		// globalstat() isn't reliable in quake ports that implement completely random 
-		// assortments of csqc extensions, but somehow clientstat() is implemented in
-		// every engine that implements any csqc, so we have to copy the number to every 
-		// player and send it as a client stat instead. so it goes.
-		e = nextent(world);
-		while (e.flags & FL_CLIENT)
-		{
-			e.clientdata = clientDataMask;
-			e = nextent(e);
-		}
-	}
-#endif
-
-	/*
-	'activator' should be a parameter of *_use(), but it's a global. so it goes.
-
-	this can lead to lots of hard-to-repro bugs in cases where 'activator' isn't set
-	properly, since it just happens to be set to the player anyway *most* of the time.
-
-	for this reason I enforce a global ban on activator ever being 'world' (via a
-	gameplay-ending error() in SUB_UseTargets) and nulling it out every single frame.
-	stale or incorrectly set activators are thus smoked out immediately, and not six
-	months from now the first time a monster touches a door field at a critical but
-	impossible to reproduce moment.
-	*/
-	activator = world;
-}
+};
 
 /*
 ==============================================================================
 
-BODY QUE[UE ~ ed.]
+BODY QUE
 
 ==============================================================================
 */
 
-void() bodyqueue =
-{	// just here so spawn functions don't complain after the world creates bodyqueues
-}
+entity	bodyque_head;
 
-void() InitBodyQueue =
+void() bodyque =
+{	// just here so spawn functions don't complain after the world
+	// creates bodyques
+};
+
+void() InitBodyQue =
 {
-	entity bq;
-	bq = spawn();
-	bq.classname = "bodyqueue";
-	bq.owner = bq;
-	
-	bodyqueue_head = bq;
-	float i = 0;
-	while (i < 5)
-	{
-		bq = spawn();
-		bq.classname = "bodyqueue";
-		bq.owner = bodyqueue_head.owner;
-		bodyqueue_head.owner = bq;
-		i++;
-	}
-	
-	/*
-	bodyqueue_head.owner = spawn();
-	bodyqueue_head.owner.classname = "bodyqueue";
-	bodyqueue_head.owner.owner = spawn();
-	bodyqueue_head.owner.owner.classname = "bodyqueue";
-	bodyqueue_head.owner.owner.owner = spawn();
-	bodyqueue_head.owner.owner.owner.classname = "bodyqueue";
-	bodyqueue_head.owner.owner.owner.owner = bodyqueue_head;*/
-}
+	bodyque_head = spawn();
+	bodyque_head.classname = "bodyque";
+	bodyque_head.owner = spawn();
+	bodyque_head.owner.classname = "bodyque";
+	bodyque_head.owner.owner = spawn();
+	bodyque_head.owner.owner.classname = "bodyque";
+	bodyque_head.owner.owner.owner = spawn();
+	bodyque_head.owner.owner.owner.classname = "bodyque";
+	bodyque_head.owner.owner.owner.owner = bodyque_head;
+};
 
 
-// make a body queue entry for the given ent so the ent can be
+// make a body que entry for the given ent so the ent can be
 // respawned elsewhere
-void(entity ent) CopyToBodyQueue =
+void(entity ent) CopyToBodyQue =
 {
-	bodyqueue_head.angles = ent.angles;
-	bodyqueue_head.model = ent.model;
-	bodyqueue_head.modelindex = ent.modelindex;
-	bodyqueue_head.frame = ent.frame;
-	bodyqueue_head.colormap = ent.colormap;
-	bodyqueue_head.movetype = ent.movetype;
-	bodyqueue_head.velocity = ent.velocity;
-	bodyqueue_head.flags = 0;
-	setorigin (bodyqueue_head, ent.origin);
-	setsize (bodyqueue_head, ent.mins, ent.maxs);
-	bodyqueue_head = bodyqueue_head.owner;
-}
+	bodyque_head.angles = ent.angles;
+	bodyque_head.model = ent.model;
+	bodyque_head.modelindex = ent.modelindex;
+	bodyque_head.frame = ent.frame;
+	bodyque_head.colormap = ent.colormap;
+	bodyque_head.movetype = ent.movetype;
+	bodyque_head.velocity = ent.velocity;
+	bodyque_head.flags = 0;
+	setorigin (bodyque_head, ent.origin);
+	setsize (bodyque_head, ent.mins, ent.maxs);
+	bodyque_head = bodyque_head.owner;
+};
