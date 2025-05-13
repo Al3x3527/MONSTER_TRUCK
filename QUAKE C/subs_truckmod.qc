@@ -35,8 +35,10 @@ void() SUB_W_ChangeWeapon =
 
 	//truck mod just this check
 	if (self.flags & FL_VEHICLE) {
-		if (self.impulse <= 4)
+		if (self.impulse <= 4){
+			truck_ImpulseCommands(); //shouldn't need
 			return; //truck impulses in m_truckmod.qc
+			}
 	}
 
 	if (self.impulse == 1)
