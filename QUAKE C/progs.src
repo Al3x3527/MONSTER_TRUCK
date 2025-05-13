@@ -71,3 +71,4 @@ mobot.qc // Using "bot" creation code for func_monster_spawner
 m_truckmod.qc
 subs_truckmod.qc
 copper_truckmod.qc
+kino.qc

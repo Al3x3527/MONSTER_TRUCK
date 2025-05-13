@@ -355,15 +355,15 @@ float() SUB_FindTarget =
 					local entity gunner = truck.turret;
 					if !(gunner.enemy) {
 						gunner.enemy = self;
-						dprint("findtarget force turret e\n");
+					//	dprint("findtarget force turret e\n");
 					}
 				}
 				self.enemy = truck.driver; //target the fake player
 				if !(alive(self.enemy)) {
-					dprint("findtarget dead driver\n");
+				//	dprint("findtarget dead driver\n");
 					return FALSE;
 				}
-				dprint("FL_VEHICLE FindTarget FoundTarget\n");
+				//dprint("FL_VEHICLE FindTarget FoundTarget\n");
 			}
 			FoundTarget();
 

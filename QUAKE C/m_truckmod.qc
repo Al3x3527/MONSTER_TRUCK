@@ -4,36 +4,6 @@
 Monster_Truck
 
 ============================================================
-known bugs:
-* chance of elevator freakout, especially going up
-X chance of camera freakout when gunner has an enemy
-	X that is dead
-	/ partially blocked by a wall 
-	X findtarget force enemy loop
-	/ shooting unsuspecting monster
-	X when player can see monster around corner
-		>should not be using aim() for this
-* truck pulls to the left when low grip or in air
-* stairstep accelerates up, even when coasting
-* truck fix doesn't work on edges of platforms
-X ai can't find each other sometimes
-* truck clips too much into walls causing freakouts on elevators
-* truck crabs a little when steering at a small angle
-* truck sinks partially into elevator going down sometimes
-* driving off edges sucks (boost helps)
-	>raising bottom of monster_truck bbox helped
-
-uniplemented ideas:
-* a way for the truck and player to take damage (truck health as armor value?)
-* mounted machinegun model and animations
-* headlights and taillights
-* engine sfx
-* hostile monster_trucks
-* truck collisions
-* truck damage states
-* truck death animations/explosions
-* player use of other "seats"
-* velocity based splatter damage
 */
 
 //forwards
@@ -1040,12 +1010,12 @@ void() gunner_check_atk =
 	gunner_choose_yaw();
 	if (!alive(self.enemy)) {
 	self.enemy = world;
-	dprint("gca e not alive\n");
+	//dprint("gca e not alive\n");
 	return;}
 		
 	if (enemy_range > 2) {
 	//|| !(enemy_vis)) already checked in choose_yaw()
-		dprint("gca e out of range\n"); //don't actually engage too far (because glitches)
+		//dprint("gca e out of range\n"); //don't actually engage too far (because glitches)
 		return;}
 	if (self.classname != "truck_gunner") {dprint(self.classname); dprint("\n");}
 	self.angles = vectoangles(self.enemy.origin - self.origin);
@@ -1486,84 +1456,3 @@ void() func_truck =
 	self.th_die = func_truck_die;
 	self.th_pain = func_truck_pain;
 }
-
-/*
-void() pester = {
-	self.velocity += '0 0 0';
-	self.avelocity += '0 0 0';
-	self.nextthink = self.ltime + 0.1;
-}
-
-void() rotate2 =
-{
-	local entity targ = find(world, targetname, self.target);
-while (targ != world) {
-	targ.velocity = '0 0 -10';
-	targ = find(targ, targetname, self.target);
-}	
-	self.nextthink = time + 3;
-	self.think = rotate_use;
-}
-
-void() rotate_use =
-{
-	local entity targ = find(world, targetname, self.target);
-	while (targ != world){
-	targ.avelocity = '0 100 0';
-	
-	targ.think = pester;
-	targ.nextthink = targ.ltime + 0.1;
-	local entity org = find(world, targetname, targ.target);
-	setorigin(targ, org.origin);
-	targ.velocity = '0 0 10';
-	targ = find(targ, targetname, self.target);
-	}
-	self.nextthink = time + 3;
-	self.think = rotate2;
-}
-
-void() func_origin = {};
-
-void() func_rotate =
-{
-	//precache_model("progs/truck_visible.bsp");
-	self.use = rotate_use;
-}
-
-void() bob3 =
-{
-local entity targ = find(world, targetname, self.target);
-targ.velocity = '0 0 0';
-targ.avelocity = '0 100 0';
-targ.think = pester;
-targ.nextthink = targ.ltime + 0.1;
-self.think = bob1;
-self.nextthink = time + 3;
-}
-
-void() bob2 =
-{
-local entity targ = find(world, targetname, self.target);
-targ.velocity = '0 0 -10';
-targ.think = pester;
-targ.nextthink = targ.ltime + 0.1;
-self.think = bob3;
-self.nextthink = time + 3;
-}
-
-void() bob1 =
-{
-local entity targ = find(world, targetname, self.target);
-targ.velocity = '0 0 10';
-targ.avelocity = '0 0 0';
-targ.think = pester;
-targ.nextthink = targ.ltime + 0.1;
-self.think = bob2;
-self.nextthink = time + 3;
-}
-
-void() func_bob =
-{
-	self.use = bob1;
-}
-*/

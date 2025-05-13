@@ -290,6 +290,8 @@ void() look_ahead =
 // This is a modified SUB_CalcMove routine.
 void(vector tdest, float tspeed, entity cam) DHM_CalcMove =
 {
+	Kino_CalcMove(tdest, tspeed, cam);
+/*
 local   vector  vdestdelta;
 local   float   len, traveltime;
 
@@ -324,6 +326,7 @@ local   float   len, traveltime;
 
 // scale the destdelta vector by the time spent traveling to get velocity
     cam.velocity = cam.mangle = vdestdelta * (1/traveltime);
+	*/
 };
 
 //- - - - - - - - -
