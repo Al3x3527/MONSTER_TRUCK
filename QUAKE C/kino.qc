@@ -23,10 +23,12 @@ local   float   len, traveltime;
 // calculate length of vector
     len = vlen (vdestdelta);
 
-	if (self.travel_time > 0) traveltime = self.travel_time; //ignore speed
+//ignore speed --ALEX
+	if (self.travel_time > 0) traveltime = self.travel_time; 
 	else if (self.travel_time == -1) traveltime = 0;
 	else {
 	dprint("travel_time not set\n");
+///
 
 // divide by speed to get time to reach dest
     traveltime = len / tspeed;
@@ -44,9 +46,11 @@ local   float   len, traveltime;
 
 // scale the destdelta vector by the time spent traveling to get velocity
     cam.velocity = cam.mangle = vdestdelta * (1/traveltime);
-//avelocity
+
+//avelocity --ALEX
 	if (self.aspeed == 0) self.aspeed = 1;
 	cam.avelocity = (cam.oldorigin - cam.angles) * (self.aspeed / traveltime);
+///
 };
 
 //set self to cam, v_angle, view_ofs, owner to following before calling
@@ -136,8 +140,11 @@ if (cpt.focal_point)    //is there a new focal point?
 	self.wait = cpt.wait;
 	if (cpt.speed)
 		self.speed = cpt.speed;
+
+	//travel_time --ALEX
 	if (cpt.travel_time)
 		self.travel_time = cpt.travel_time;
 	else self.travel_time = 0;
-	DHM_CalcMove(cpt.origin, self.speed, self.enemy);
+	Kino_CalcMove(cpt.origin, self.speed, self.enemy);
+	///
 };

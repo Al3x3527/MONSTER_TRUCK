@@ -33,14 +33,14 @@ void() SUB_W_ChangeWeapon =
 
 	if (!self.impulse) return;
 
-	//truck mod just this check
+	//truck mod just this check --ALEX
 	if (self.flags & FL_VEHICLE) {
 		if (self.impulse <= 4){
 			truck_ImpulseCommands(); //shouldn't need
 			return; //truck impulses in m_truckmod.qc
 			}
 	}
-
+	///
 	if (self.impulse == 1)
 	{
 		fl = IT_AXE;
@@ -187,7 +187,7 @@ if (do_ladder_physics)
 	}
 } else
 {
-	//truckmod ======================================================
+	//truckmod --ALEX  ======================================================
 	if !(self.flags & FL_VEHICLE) {
 		if (self.button2)
 		{
@@ -197,6 +197,7 @@ if (do_ladder_physics)
 			self.flags = self.flags | FL_JUMPRELEASED;
 		}
 	}
+	///
 } //johnfitz
 
 // teleporters can force a non-moving pause time
@@ -266,20 +267,23 @@ void() SUB_PlayerPostThink =
 		{
 			self.flags = not(self.flags, FL_FLY);
 		}
-		//truckmod fakeowner =====================================================================
+
+//truckmod fakeowner --ALEX
 		if (self.fakeowner) { //don't clear all owners
 			if (self.fakeowner < time) {
 				self.fakeowner = 0;
 				self.owner = 0;
 			}
 		}
-
+///
 };
 
 void() SUB_t_movetarget =
 {
 local entity	temp;
 
+
+//check vehicle --ALEX
 	if (other.flags & FL_VEHICLE) {
 		if (other.driver) {
 			other = other.driver;
@@ -291,6 +295,7 @@ local entity	temp;
 			}
 		//dprint("vehicle t_movetarget\n");
 	}
+///
 
 	if (other.movetarget != self)
 		return;
@@ -390,7 +395,7 @@ float() SUB_FindTarget =
 					return FALSE;
 				}
 			}
-			//truckmod just this check
+//truckmod just this check --ALEX
 			if (self.enemy.flags & FL_VEHICLE) {
 				local entity truck = self.enemy.owner;
 				if (truck.turret) {
@@ -407,6 +412,7 @@ float() SUB_FindTarget =
 				}
 				//dprint("FL_VEHICLE FindTarget FoundTarget\n");
 			}
+///
 			FoundTarget();
 
 			return TRUE;
