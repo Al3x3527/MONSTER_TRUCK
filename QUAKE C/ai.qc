@@ -111,30 +111,7 @@ moving towards it, change the next destination and continue.
 */
 void() t_movetarget =
 {
-local entity	temp;
-
-	if (other.movetarget != self)
-		return;
-
-	if (other.enemy)
-		return;		// fighting, not following a path
-
-	temp = self;
-	self = other;
-	other = temp;
-
-	if (self.classname == "monster_ogre")
-		sound_misc (self, CHAN_VOICE, "ogre/ogdrag.wav", 1, ATTN_IDLE);// play chainsaw drag sound -- sound_custom -- dumptruck_ds
-
-//dprint ("t_movetarget\n");
-	self.goalentity = self.movetarget = find (world, targetname, other.target);
-	self.ideal_yaw = vectoyaw(self.goalentity.origin - self.origin);
-	if (!self.movetarget)
-	{
-		self.pausetime = time + 999999;
-		self.th_stand ();
-		return;
-	}
+SUB_t_movetarget();
 };
 
 

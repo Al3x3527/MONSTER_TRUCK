@@ -554,7 +554,8 @@ entity(vector org, float damg, entity parent, float multi) kaboom =
 	boom.nextthink = time;
 	boom.think = BecomeExplosion;
 
-	if (damg > 0) T_RadiusDamage(boom, parent, damg, boom, DMGTYPE_EXPLOSION);
+	//if (damg > 0) T_RadiusDamage(boom, parent, damg, boom, DMGTYPE_EXPLOSION);
+	if (damg > 0) T_RadiusDamage(boom, parent, damg, boom);
 
 	return boom;
 }

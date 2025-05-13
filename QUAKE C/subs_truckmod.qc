@@ -4,7 +4,7 @@
 
 float FL_VEHICLE = 16384;
 float FL_CAMERA = 32768;
-float I_AM_TURRET = 262144; //dumptruck_ds
+//float I_AM_TURRET = 262144; //dumptruck_ds
 .entity driver;
 .entity passenger;
 .entity turret;
@@ -274,6 +274,46 @@ void() SUB_PlayerPostThink =
 			}
 		}
 
+};
+
+void() SUB_t_movetarget =
+{
+local entity	temp;
+
+	if (other.flags & FL_VEHICLE) {
+		if (other.driver) {
+			other = other.driver;
+			//dprint("monster truck t\n");
+			}
+		else if (other.owner.driver) {
+			other = other.owner.driver;
+			//dprint("func_truck t\n");
+			}
+		//dprint("vehicle t_movetarget\n");
+	}
+
+	if (other.movetarget != self)
+		return;
+
+	if (other.enemy)
+		return;		// fighting, not following a path
+
+	temp = self;
+	self = other;
+	other = temp;
+
+	if (self.classname == "monster_ogre")
+		sound_misc(self, CHAN_VOICE, "ogre/ogdrag.wav", 1, ATTN_IDLE);// play chainsaw drag sound -- sound_custom -- dumptruck_ds
+
+//dprint ("t_movetarget\n");
+	self.goalentity = self.movetarget = find(world, targetname, other.target);
+	self.ideal_yaw = vectoyaw(self.goalentity.origin - self.origin);
+	if (!self.movetarget)
+	{
+		self.pausetime = time + 999999;
+		self.th_stand();
+		return;
+	}
 };
 
 float() SUB_FindTarget =

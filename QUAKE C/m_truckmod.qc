@@ -31,7 +31,7 @@ void(float relative) cpywalk =
 	local vector fakeangles = master.angles;
 	fakeangles.x = -fakeangles.x;
 	makevectors(fakeangles);
-	
+	if (self.classname == "monster_truck") dprint("monster truck cpywalk\n");
 	if ((self.flags & FL_ONGROUND) && (self.movetype & MOVETYPE_FLY))
 		self.flags = self.flags - FL_ONGROUND; //this is dumb
 
@@ -205,7 +205,7 @@ float (float dist, vector dir) truck_physics =
 	//=================================================================
 	//steer and throttle inputs 
 	//=================================================================
-	
+	//if (dist) {dprint_float(dist); dprint("\n");}
 	//truck vectors - velocity from wheels vs gravity, est grip
 	local vector svec = truck.velocity;
 	local vector avec = truck.avelocity;
@@ -426,7 +426,7 @@ float (float dist, vector dir) truck_physics =
 	local vector vec5;
 	if (trace_ent != world)
 		vec5 = trace_ent.velocity; //touching ground velocity (as velocity)
-	//if(vec5 != '0 0 0') {dprint(vtos(vec5)); dprint("vec5\n");}
+	if(vec5 != '0 0 0') {dprint(vtos(vec5)); dprint("vec5\n");}
 
 	//=================================================================
 	//vehicle forces, target vector
@@ -572,11 +572,11 @@ local vector work = work1 + work2 + work3 + work4;
 
 void(entity truck) spawn_truck_driver =
 {
-	local entity player = self;
+	local entity master = self;
 	local entity pilot = spawn();
 	self = pilot;
 
-	player.driver = pilot;
+	master.driver = pilot;
 	pilot.owner = truck.owner;
 	setmodel(self, "progs/truck/driving_ranger.mdl");
 	setsize(self, '-10 -10 0', '10 10 30');
@@ -588,7 +588,7 @@ void(entity truck) spawn_truck_driver =
 	self.health = 1; //triggers doors
 	self.th_die = PlayerDie;
 	setorigin(self, truck.origin + self.view_ofs); //fix next truck think
-	self = player;
+	self = master;
 }
 
 //orbital camera
@@ -733,13 +733,28 @@ void() truck_ImpulseCommands =
 	self.impulse = 0;
 }
 
+vector () ai_steer =
+{
+	//dprint(self.classname); dprint(" ai steer\n");
+	//return '0 0 0';
+	cpywalk(0);
+	local vector delta = self.goalentity.origin - self.origin;
+	self.ideal_yaw = vectoyaw(delta);
+	ChangeYaw();
+	return (normalize(delta));
+}
+
 vector () truck_pilot =
 {
 	local entity truck = self;
 	self = other;
+	local vector look;
 	if (self.classname != "player") {
-		dprint("pilot not player");
-		return '0 0 0';
+		//dprint("pilot not player");
+		look = ai_steer();
+	//	dprint_vector(look); dprint("\n");
+		self = truck;
+		return (look);
 	}
 
 if !(self.driver.health) {
@@ -756,7 +771,7 @@ if !(self.driver.health) {
 	}
 	self.weaponmodel = string_null;
 	makevectors(self.v_angle);
-	local vector look = v_forward;
+	look = v_forward;
 	local vector offset = '-100 0 30';
 	if (truck.style) offset *= 2;
 	camera_orbit(look, offset);
@@ -770,8 +785,10 @@ void() truck_drive = [ $forward1, truck_drive ]
 	local float dist = 0;
 	if (self.driver) {
 		other = self.driver;
-		if (other.button2) {
+		if (((other.classname == "player") && (other.button2))
+		|| (other.attack_state)){
 			dist = 4;
+			if (self.speed) dist *= self.speed;
 			if (self.skin > 5) self.skin -= 6;
 			}
 		else if (self.skin < 6) self.skin += 6;
@@ -884,6 +901,7 @@ if !(self.flags & FL_ONGROUND) self.flags += FL_ONGROUND;
 
 void() move_walk_truck = {
 //we know other is a player
+if (other.classname != "player") dprint("move walk truck not player\n");
 local entity truck = self.brushcollider;
 local entity client = other;
 self = client;
@@ -899,8 +917,8 @@ other = client;
 void() truck_touch =
 {
 	if (other.owner == self) return;
-	if (other.flags & FL_MONSTER)
-		T_Damage(other, self, self, 100);
+//	if (other.flags & FL_MONSTER)
+//		T_Damage(other, self, self, 100);
 	
 	if (!CheckValidTouch()) return;
 
@@ -921,7 +939,7 @@ void() truck_touch =
 	if (other.impulse == 1) {
 		other.impulse = 0;
 		self.driver = other;
-		other.flags = other.flags + FL_VEHICLE;
+		//other.flags = other.flags + FL_VEHICLE;
 		other.fakeowner = 0;
 		self.flags = self.flags + FL_CLIENT;
 		}
@@ -1318,7 +1336,52 @@ void() spawn_monster_truck =
 	//gunner
 	self.health = 100;
 	self.th_die = truck_die;
+	self.use = spawn_monster_driver;
 };
+
+void() pilot_go =
+{
+if (self.target != "")
+	{
+		self.goalentity = self.movetarget = find(world, targetname, self.target);
+		self.ideal_yaw = vectoyaw(self.goalentity.origin - self.origin);
+		if (!self.movetarget)
+		{
+			dprint("Monster can't find target at ");
+			dprint(vtos(self.origin));
+			dprint("\n");
+		} else dprint("goalentity found!\n");
+	} else dprint("no target\n");
+	self.attack_state = 1;
+	self.think = SUB_Null;
+}
+
+void() spawn_monster_driver =
+{
+	local entity pilot = spawn();
+	pilot.origin = self.origin;
+	pilot.view_ofs = '0 0 30';
+	pilot.health = 1;
+	pilot.th_die = SUB_Remove;
+	pilot.th_stand = SUB_Null;
+	pilot.flags = FL_MONSTER;
+	pilot.movetype = MOVETYPE_FLY;
+	pilot.solid = SOLID_TRIGGER;
+	setsize(pilot, '0 0 0', '7 7 7');
+	//setmodel(pilot, "progs/truck/driving_ranger.mdl");
+	pilot.classname = "monster_driver";
+	pilot.owner = self.owner;
+	pilot.target = self.target;
+	pilot.think = pilot_go;
+	pilot.nextthink = time + 0.2;
+	
+	self.driver = pilot;
+	local entity truck = self;
+	self = pilot;
+	spawn_truck_driver(truck);
+	
+	self = truck;
+}
 
 void() monster_truck =
 {
@@ -1330,13 +1393,16 @@ void() monster_truck =
 	precache_model("progs/truck/gib_wheel.mdl");
 	precache_model("progs/truck/gib_hood.mdl");
 
-	if !(self.skin) self.skin = 2;
+	//if !(self.skin) self.skin = 2;
 	spawn_monster_truck();
 	if (self.spawnflags & I_AM_TURRET) {
+	dprint("spawning truck turret\n");
 		spawn_truck_gunner();
 		spawn_truck_passenger();
 		spawn_truck_mg();
 	}
+	else dprint("spawning truck no turret\n");
+	if (self.style == 2) spawn_monster_driver();
 }
 
 void() rohack = {
@@ -1362,8 +1428,8 @@ void() beSolid =
 
 void() truck_blocked =
 {
-	//dprint(trace_ent.classname); 
-	//dprint("truck blocked\n");
+	dprint(trace_ent.classname); 
+	dprint("truck blocked\n");
 	if (other.solid != SOLID_BSP) {
 	truck_touch();
 	return;

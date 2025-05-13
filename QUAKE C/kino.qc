@@ -2,7 +2,7 @@
 .float aspeed;
 
 // This is a modified SUB_CalcMove routine.
-void(vector tdest, float tspeed, entity cam) Kino_CalcMove =
+void(vector tdest, float tspeed, entity cam) Kino_CalcMove = //(SUB_DHM_CalcMove)
 {
 local   vector  vdestdelta;
 local   float   len, traveltime;
@@ -16,18 +16,22 @@ local   float   len, traveltime;
         self.nextthink = time + 0.01;
         return;
     }
-	if (cam.travel_time > 0) traveltime = cam.travel_time; //ignore speed
-	else if (cam.travel_time == -1) traveltime = 0;
-	else {
+
 // set destdelta to the vector needed to move
     vdestdelta = tdest - cam.origin;
 
 // calculate length of vector
     len = vlen (vdestdelta);
 
+	if (self.travel_time > 0) traveltime = self.travel_time; //ignore speed
+	else if (self.travel_time == -1) traveltime = 0;
+	else {
+	dprint("travel_time not set\n");
+
 // divide by speed to get time to reach dest
     traveltime = len / tspeed;
 	}
+	dprint_float(traveltime); dprint("\n");
     if (traveltime < 0.1)
     {
         cam.velocity = cam.mangle = '0 0 0';
@@ -41,7 +45,8 @@ local   float   len, traveltime;
 // scale the destdelta vector by the time spent traveling to get velocity
     cam.velocity = cam.mangle = vdestdelta * (1/traveltime);
 //avelocity
-	cam.avelocity = (cam.oldorigin - cam.angles) * (cam.aspeed / traveltime);
+	if (self.aspeed == 0) self.aspeed = 1;
+	cam.avelocity = (cam.oldorigin - cam.angles) * (self.aspeed / traveltime);
 };
 
 //set self to cam, v_angle, view_ofs, owner to following before calling
@@ -86,4 +91,53 @@ void() Kino_cpywalk =
 
 	self.velocity = delta * 10;
 	//dprint(vtos(delta * 10)); dprint(vtos(self.velocity)); dprint("velocity\n");
+};
+
+void() SUB_move_camera =
+{
+local   entity  cpt, fpt;
+local   vector  looky;
+
+	if (!cutscene)      // Old check:  if (self.enemy.classname != "camera")
+		{
+remove(self); return;
+}
+
+cpt = find(world, targetname, self.target);
+if (!cpt.target)     //if this is the end of the line, stop camera
+{
+	self.think = SUB_Null;
+	self.enemy.velocity = '0 0 0';
+	self.enemy.mangle = '0 0 0';     //mangle == velocity in cut-scene
+	DHM_CalcMoveDone();
+	self.cnt = -1;    // remove control entity in DHM_CalcMoveDone
+	//return;
+}
+if (cpt.focal_point)    //is there a new focal point?
+{
+	fpt = find(world, targetname, cpt.focal_point);
+	if (!fpt)
+		objerror("Couldn't find new focal point!");
+
+	self.enemy.movedir = fpt.origin;
+	looky_x = self.enemy.movedir_x - self.enemy.origin_x;
+	looky_y = self.enemy.movedir_y - self.enemy.origin_y;
+	looky_z = self.enemy.origin_z - self.enemy.movedir_z;
+	self.enemy.oldorigin = vectoangles(looky);
+	self.enemy.angles = self.enemy.oldorigin;    //oldorigin == angles in CS
+}
+// Check for auto-focus or still camera angle
+	if (cpt.delay)
+		self.enemy.delay = cpt.delay;
+	else
+		self.enemy.delay = 0;
+
+	self.target = cpt.target;
+	self.wait = cpt.wait;
+	if (cpt.speed)
+		self.speed = cpt.speed;
+	if (cpt.travel_time)
+		self.travel_time = cpt.travel_time;
+	else self.travel_time = 0;
+	DHM_CalcMove(cpt.origin, self.speed, self.enemy);
 };

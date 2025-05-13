@@ -360,46 +360,7 @@ void() DHM_CalcMoveDone =
 
 void() move_camera =
 {
-local   entity  cpt, fpt;
-local   vector  looky;
-
-    if (!cutscene)      // Old check:  if (self.enemy.classname != "camera")
-        {remove (self); return;}
-
-    cpt = find (world, targetname, self.target);
-    if (!cpt.target)     //if this is the end of the line, stop camera
-    {
-        self.think = SUB_Null;
-        self.enemy.velocity = '0 0 0';
-        self.enemy.mangle = '0 0 0';     //mangle == velocity in cut-scene
-        DHM_CalcMoveDone();
-        self.cnt = -1;    // remove control entity in DHM_CalcMoveDone
-        //return;
-    }
-    if (cpt.focal_point)    //is there a new focal point?
-    {
-        fpt = find (world, targetname, cpt.focal_point);
-        if (!fpt)
-            objerror("Couldn't find new focal point!");
-
-        self.enemy.movedir = fpt.origin;
-        looky_x = self.enemy.movedir_x - self.enemy.origin_x;
-        looky_y = self.enemy.movedir_y - self.enemy.origin_y;
-        looky_z = self.enemy.origin_z - self.enemy.movedir_z;
-        self.enemy.oldorigin = vectoangles (looky);
-        self.enemy.angles = self.enemy.oldorigin;    //oldorigin == angles in CS
-    }
-// Check for auto-focus or still camera angle
-    if (cpt.delay)
-        self.enemy.delay = cpt.delay;
-    else
-        self.enemy.delay = 0;
-
-    self.target = cpt.target;
-    self.wait = cpt.wait;
-    if(cpt.speed)
-        self.speed = cpt.speed;
-    DHM_CalcMove (cpt.origin, self.speed, self.enemy);
+SUB_move_camera();
 };
 //- - - - - - - - -
 
