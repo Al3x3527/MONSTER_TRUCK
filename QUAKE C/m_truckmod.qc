@@ -601,7 +601,7 @@ void(vector look, vector offset) camera_orbit =
 	
 	local vector view = look * offset.x;
 	view.z += offset.z;
-	local vector newangles = vectoangles(view);
+	//local vector newangles = vectoangles(view);
 	view += truck.origin;
 	local vector del = truck.origin - self.origin;
 	delta = truck.velocity * 0.1;
@@ -612,10 +612,10 @@ void(vector look, vector offset) camera_orbit =
 	if (self.flags & FL_ONGROUND)
 		self.flags = self.flags - FL_ONGROUND;
 
-	local vector dang = newangles - self.angles;
-	if (dang.y > 180) dang.y += -360;
-	else if (dang.y < -180) dang.y += 360;
-	self.avelocity = (dang * 10 * 4 + self.avelocity) / 5;
+	//local vector dang = newangles - self.angles;
+	//if (dang.y > 180) dang.y += -360;
+	//else if (dang.y < -180) dang.y += 360;
+	//self.avelocity = (dang * 10 * 4 + self.avelocity) / 5;
 
 	if (dist > (offset.z - offset.x)) {
 		view = look * -20;

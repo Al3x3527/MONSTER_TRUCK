@@ -1,5 +1,4 @@
 .float travel_time;
-.float aspeed;
 
 // This is a modified SUB_CalcMove routine.
 void(vector tdest, float tspeed, entity cam) Kino_CalcMove = //(SUB_DHM_CalcMove)
@@ -48,8 +47,8 @@ local   float   len, traveltime;
     cam.velocity = cam.mangle = vdestdelta * (1/traveltime);
 
 //avelocity --ALEX
-	if (self.aspeed == 0) self.aspeed = 1;
-	cam.avelocity = (cam.oldorigin - cam.angles) * (self.aspeed / traveltime);
+	cam.avelocity = (cam.oldorigin - cam.angles) * (1 / traveltime); //fake
+
 ///
 };
 
@@ -148,3 +147,49 @@ if (cpt.focal_point)    //is there a new focal point?
 	Kino_CalcMove(cpt.origin, self.speed, self.enemy);
 	///
 };
+
+//TESTING
+
+void() FakeAvelocity =
+{
+	self.enemy.v_angle = self.enemy.angles += self.enemy.avelocity * 0.04;
+	self.enemy.fixangle = 1;
+	dprint(self.enemy.classname); dprint("\n");
+	self.nextthink = time + 0.04;
+}
+
+void() avelocity_test =
+{
+	/* This doesn't work
+	//if (!CheckValidTouch()) return;
+	other = activator;
+	other.movetype = MOVETYPE_NOCLIP;
+	other.avelocity = '0 50 0';
+	setorigin(other, other.origin + '0 0 30');
+	other.modelindex = 0;
+	other.fixangle = 1;
+	//other.view_ofs = '0 0 0';
+	other.weaponmodel = "";
+	other.velocity = '10 0 10';
+	dprint(other.classname);
+	//intermission_running = 1;
+	*/
+
+	self.enemy = activator;
+	activator.movetype = MOVETYPE_NOCLIP;
+	activator.avelocity = '50 50 50'; //fake
+	setorigin(activator, activator.origin + '0 0 50');
+	activator.fixangle = 1;
+	activator.weaponmodel = "";
+	self.think = FakeAvelocity;
+	self.nextthink = time + 0.04;
+
+	dprint("avelocity test\n");
+}
+
+void() trigger_avelocity =
+{
+	self.use = avelocity_test;
+}
+
+///
